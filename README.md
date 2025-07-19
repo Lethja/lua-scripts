@@ -1,4 +1,5 @@
-These are Lua scripts are distributed or help build Lua for Watcom.
+These are Lua scripts that are distributed with or help build 
+[Lua for Watcom](https://github.com/Lethja/lua-watcom).
 The scripts range from simple demos to clones of unix utilities
 that are particularly useful on platforms that have no native equivalent.
 
