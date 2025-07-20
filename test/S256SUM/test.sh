@@ -8,9 +8,9 @@ GNU=$(sha256sum $SCRIPT)
 LUA=$($INTERP $SCRIPT $SCRIPT)
 
 if [ "$GNU" = "$LUA" ]; then
-  echo "$TEST PASS"
+  echo "$TEST: PASS"
   exit 0
 else
-  echo "$TEST FAIL"
+  echo "$TEST: FAIL"
   exit 1
 fi
