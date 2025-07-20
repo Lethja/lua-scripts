@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+
+INTERP=${INTERP:-lua}
+SCRIPT="BENCH.LUA"
+
+cd ../../core || die
+echo | $INTERP $SCRIPT 1980
+cd ../bench || die
+echo | $INTERP $SCRIPT 1980
+echo "BENCH: PASS"
