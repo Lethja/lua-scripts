@@ -26,8 +26,7 @@ local function patch(p)
 			print("Context: '" .. l:sub(2) .. "'")
 		elseif ls == '@' then
 			if l:sub(2,3) == "@ " then
-				--TODO: Jump through file to when hunk starts
-				local function hunkData()
+				local function parseHunkHeader()
 					local function split(i,d)
 						local r={}
 						for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end
@@ -38,9 +37,14 @@ local function patch(p)
 					if words[3] then new=split(words[3],",")end
 					if old[1] then old[1]=old[1]:sub(2)end
 					if new[1] then new[1]=new[1]:sub(2)end
-					return old[1],old[2]or"1",new[1],new[2]or"1"
+					return {
+						old = { start = tonumber(old[1]), lines = tonumber(old[2]) or 1},
+						new = { start = tonumber(new[1]), lines = tonumber(new[2]) or 1}
+					}
 				end
-				local a,b,c,d=hunkData()print("Hunk Header",a,b,c,d)
+				--TODO: Something useful with this table
+				local hunk=parseHunkHeader()print("Hunk Header",hunk.old.start,hunk.old.count,hunk.new.start,hunk.new.lines)
+				--TODO: Jump through file to when hunk starts
 			end
 		end
 	end
