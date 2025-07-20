@@ -10,7 +10,7 @@ test_case() {
   cd "result"
   $INTERP $SCRIPT a.txt b.txt > "diff"
   patch -s --posix --batch -p0 < "diff"
-  if cmp -s a.txt b.txt; then
+  if { set +e; cmp -s a.txt b.txt; }; then
     printf "\tCASE %s: PASS\n" "$1"
   else
     printf "\tCASE %s: FAIL\n" "$1"
