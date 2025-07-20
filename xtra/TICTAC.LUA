@@ -41,7 +41,7 @@ local function game()
 	local b = {"7","8","9","4","5","6","1","2","3"} printBoard(b)
 	while true do
 		humanMove(b)
-		if checkWin(b, "U") then print("User win!") printBoard(b) break
+		if checkWin(b, "U") then print("User wins!") printBoard(b) break
 		elseif boardFull(b) then print("It's a tie!") printBoard(b) break end
 		computerMove(b)
 		if checkWin(b, "C") then print("CPU wins!") printBoard(b) break
