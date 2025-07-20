@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-
+set -e
 INTERP=${INTERP:-lua}
 SCRIPT="TICTAC.LUA"
 

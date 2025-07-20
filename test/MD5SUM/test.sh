@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-
+set -e
 INTERP=${INTERP:-lua}
 TEST="MD5SUM"
 SCRIPT="MD5SUM.LUA"

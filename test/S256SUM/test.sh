@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-
+set -e
 INTERP=${INTERP:-lua}
 TEST="S256SUM"
 SCRIPT="S256SUM.LUA"
