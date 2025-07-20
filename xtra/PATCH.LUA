@@ -8,17 +8,40 @@ local function patch(p)
 		if ls == "+" then
 			if l:sub(2,4) == "++ " then
 				--TODO: New file
+				print("New File: '" .. l:sub(5) .. "'")
 			else
 				--TODO: Add Line
+				print("Add Line: '" .. l:sub(2) .. "'")
 			end
 		elseif ls == '-' then
 			if l:sub(2,4) == "-- " then
 				--TODO: Old file
+				print("Old File: '" .. l:sub(5) .. "'")
 			else
 				--TODO: Del Line
+				print("Del Line: '" .. l:sub(2) .. "'")
 			end
 		elseif ls == ' ' then
 			--TODO: context line verification
+			print("Context: '" .. l:sub(2) .. "'")
+		elseif ls == '@' then
+			if l:sub(2,3) == "@ " then
+				--TODO: Jump through file to when hunk starts
+				local function hunkData()
+					local function split(i,d)
+						local r={}
+						for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end
+						return r
+					end
+					local words,old,new=split(l," "),{},{}
+					if words[2] then old=split(words[2],",")end
+					if words[3] then new=split(words[3],",")end
+					if old[1] then old[1]=old[1]:sub(2)end
+					if new[1] then new[1]=new[1]:sub(2)end
+					return old[1],old[2]or"1",new[1],new[2]or"1"
+				end
+				local a,b,c,d=hunkData()print("Hunk Header",a,b,c,d)
+			end
 		end
 	end
 	pf:close()
