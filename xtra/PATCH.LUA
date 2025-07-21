@@ -51,12 +51,12 @@ local function patch(p)
 					if old[1] then old[1]=old[1]:sub(2)end
 					if new[1] then new[1]=new[1]:sub(2)end
 					return {
-						old = { start = tonumber(old[1]), lines = tonumber(old[2]) or 1},
-						new = { start = tonumber(new[1]), lines = tonumber(new[2]) or 1}
+						old = { start = tonumber(old[1]), lines = tonumber(old[2]) or 1 },
+						new = { start = tonumber(new[1]), lines = tonumber(new[2]) or 1 }
 					}
 				end
 				--TODO: Something useful with this table
-				local hunk=parseHunkHeader()print("Hunk Header",hunk.old.start,hunk.old.count,hunk.new.start,hunk.new.lines)
+				local hunk=parseHunkHeader()print("Hunk Header",hunk.old.start,hunk.old.lines,hunk.new.start,hunk.new.lines)
 				--TODO: Jump through file to when hunk starts
 			end
 		end
