@@ -4,12 +4,6 @@ local function patch(p)
 	local pf, e = io.open(p)
 	if not pf then print(e) os.exit(1) end
 
-	local function split(i,d)
-		local r={}
-		for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end
-		return r
-	end
-
 	local function parseFileName(l)
 		local first = l:sub(5,5)
 		if first == '"' or first == "'" then
@@ -45,6 +39,11 @@ local function patch(p)
 		elseif ls == '@' then
 			if l:sub(2,3) == "@ " then
 				local function parseHunkHeader()
+					local function split(i,d)
+						local r={}
+						for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end
+						return r
+					end
 					local words,old,new=split(l," "),{},{}
 					if words[2] then old=split(words[2],",")end
 					if words[3] then new=split(words[3],",")end
