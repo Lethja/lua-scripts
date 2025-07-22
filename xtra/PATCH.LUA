@@ -40,20 +40,30 @@ local function patch(p)
 				--TODO: New file
 				print("New File: '" .. parseFileName(l) .. "'")
 			else
-				--TODO: Add Line
-				print("Add Line: '" .. l:sub(2) .. "'")
+				if of then of:write(l:sub(2) .. '\n') ol = ol + 1 end
 			end
 		elseif ls == '-' then
 			if l:sub(2,4) == "-- " then
-				--TODO: Old file
-				print("Old File: '" .. parseFileName(l) .. "'")
+				local filename = parseFileName(l)
+				if setPatchFile(filename) then cp = filename end
 			else
-				--TODO: Del Line
-				print("Del Line: '" .. l:sub(2) .. "'")
+				local cmp = bf:read("*l") bl = bl + 1
+				if cmp ~= l:sub(2) then 
+					print("Malformed Hunk")
+				end
 			end
 		elseif ls == ' ' then
 			--TODO: context line verification
-			print("Context: '" .. l:sub(2) .. "'")
+			local line = l:sub(2)
+			if bf then
+				local cmp = bf:read("*l") bl = bl + 1
+				if cmp == line then
+					if of then of:write(line .. '\n') ol = ol + 1 end
+				else
+					print("Malformed Hunk")
+				end
+			end
+
 		elseif ls == '@' then
 			if l:sub(2,3) == "@ " then
 				local function parseHunkHeader()
