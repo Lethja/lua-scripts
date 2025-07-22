@@ -2,6 +2,7 @@
 
 local function patch(p)
 	local pf, e = io.open(p)
+	local ol, bl, cp, of, bf = 0, 0
 	if not pf then print(e) os.exit(1) end
 
 	local function parseFileName(l)
@@ -13,6 +14,23 @@ local function patch(p)
 			for v in string.gmatch(l, "%S+") do table.insert(words, v) end
 			return words[2]
 		end
+	end
+
+	local function setPatchFile(f)
+		local o, b
+		local function abort()
+			print(e)
+			if o then o:close() end
+			if b then b:close() end
+			return false
+		end
+		o, e = io.open(f)if not o then return abort end
+		b, e = io.open(f..".orig", "w")if not b then return abort end
+		for m in o:lines() do b:write(m..'\n') end o:close() b:close()
+		o, e = io.open(f, "w") if not o then return abort end
+		b, e = io.open(f..".orig") if not b then return abort end
+		if of then of:close() end if bf then bf:close() end of = o bf = b
+		return true
 	end
 
 	for l in pf:lines() do
