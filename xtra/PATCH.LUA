@@ -37,8 +37,7 @@ local function patch(p)
 		local ls = l:sub(1, 1)
 		if ls == "+" then
 			if l:sub(2,4) == "++ " then
-				--TODO: New file
-				print("New File: '" .. parseFileName(l) .. "'")
+				--TODO: Just ignore this line?
 			else
 				if of then of:write(l:sub(2) .. '\n') ol = ol + 1 end
 			end
