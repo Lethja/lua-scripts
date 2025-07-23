@@ -33,6 +33,18 @@ local function patch(p)
 		return true
 	end
 
+	local function writeRemainder()
+		if of then
+			local rest = bf:read("*l")
+			while rest do
+				of:write(rest .. '\n')
+				rest = bf:read("*l")
+			end
+			of:close()
+		end
+		bf:close()
+	end
+
 	for l in pf:lines() do
 		local ls = l:sub(1, 1)
 		if ls == "+" then
@@ -45,6 +57,7 @@ local function patch(p)
 			if l:sub(2,4) == "-- " then
 				local filename = parseFileName(l)
 				if setPatchFile(filename) then cp = filename end
+				if bf then writeRemainder() end
 			else
 				local cmp = bf:read("*l") bl = bl + 1
 				if cmp ~= l:sub(2) then 
@@ -99,6 +112,7 @@ local function patch(p)
 		end
 	end
 	pf:close()
+	if bf then writeRemainder() end
 end
 
 if #arg < 1 then os.exit(1) end
