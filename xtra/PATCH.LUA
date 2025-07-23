@@ -2,7 +2,7 @@
 
 local function patch(p)
 	local pf, e = io.open(p)
-	local ol, bl, cp, of, bf = 0, 0
+	local ol, bl, cp, of, bf, hunk = 0, 0
 	if not pf then print(e) os.exit(1) end
 
 	local function parseFileName(l)
@@ -82,9 +82,20 @@ local function patch(p)
 						new = { start = tonumber(new[1]), lines = tonumber(new[2]) or 1 }
 					}
 				end
-				--TODO: Something useful with this table
-				local hunk=parseHunkHeader()print("Hunk Header",hunk.old.start,hunk.old.lines,hunk.new.start,hunk.new.lines)
-				--TODO: Jump through file to when hunk starts
+				if hunk then
+					if bl - hunk.old.start ~= hunk.old.lines or ol - hunk.new.start ~= hunk.new.lines then
+						print("Malformed Hunk")
+					end
+				end
+				hunk=parseHunkHeader()
+				if hunk then
+					local skip, line = hunk.old.start - 1
+					if hunk.new.start - 1 ~= skip then print("Malformed Hunk") end
+					while bl < skip do
+						line, bl = bf:read("*l"), bl + 1
+						if of then of:write(line .. '\n') ol = ol + 1 end
+					end
+				end
 			end
 		end
 	end
