@@ -56,13 +56,11 @@ local function patch(p)
 		elseif ls == '-' then
 			if l:sub(2,4) == "-- " then
 				local filename = parseFileName(l)
-				if setPatchFile(filename) then cp = filename end
 				if bf then writeRemainder() end
+				if setPatchFile(filename) then cp = filename print("\n'" .. cp .. "':") end
 			else
 				local cmp = bf:read("*l") bl = bl + 1
-				if cmp ~= l:sub(2) then 
-					print("Malformed Hunk")
-				end
+				if cmp ~= l:sub(2) then print("malformed")os.exit(1) end
 			end
 		elseif ls == ' ' then
 			--TODO: context line verification
@@ -72,7 +70,7 @@ local function patch(p)
 				if cmp == line then
 					if of then of:write(line .. '\n') ol = ol + 1 end
 				else
-					print("Malformed Hunk")
+					print("malformed")os.exit(1)
 				end
 			end
 
@@ -96,13 +94,16 @@ local function patch(p)
 				end
 				if hunk then
 					if bl - hunk.old.start ~= hunk.old.lines or ol - hunk.new.start ~= hunk.new.lines then
-						print("Malformed Hunk")
+						print("malformed")os.exit(1)
+					else
+						print("patched")
 					end
 				end
 				hunk=parseHunkHeader()
 				if hunk then
+					io.write("\t@@ -" .. hunk.old.start .. "," .. hunk.old.lines .. " +" .. hunk.new.start .. "," .. hunk.new.lines .. " @@: ")
 					local skip, line = hunk.old.start - 1
-					if hunk.new.start - 1 ~= skip then print("Malformed Hunk") end
+					if hunk.new.start - 1 ~= skip then print("malformed")os.exit(1) end
 					while bl < skip do
 						line, bl = bf:read("*l"), bl + 1
 						if of then of:write(line .. '\n') ol = ol + 1 end
@@ -112,6 +113,7 @@ local function patch(p)
 		end
 	end
 	pf:close()
+	if hunk then print("patched") end
 	if bf then writeRemainder() end
 end
 
