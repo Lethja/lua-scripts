@@ -9,12 +9,8 @@ local function diff_u(fn1,fn2)
 		if not h then print("--- "..SW(fn1).."\n+++ "..SW(fn2))h=true end
 		if#p>0 then for _,v in ipairs(p)do table.insert(B.l," "..v)end B.o,B.n=x-#p,y-#p end p={}end
 	local function FH()
-		local pol={}
-		local function opt()local i,j=1 repeat j=1 repeat if d[i]== a[j]then table.insert(pol,table.remove(d,i))table.remove(a,j)break end j=j+1 until j>#a i=i+1 until i>#d end
-    	if#d>0 and#a>0 then opt()end
 		for _,v in ipairs(d)do table.insert(B.l,"-"..v)end
 		for _,v in ipairs(a)do table.insert(B.l,"+"..v)end
-		for _,v in ipairs(pol)do table.insert(B.l," "..v)end
 		B.a,B.d=B.a+#a,B.d+#d d,a={},{}end
 	local function FB()
 		if#B.l>0 then B.d,B.a=#B.l-B.a,#B.l-B.d
