@@ -20,7 +20,7 @@ test_case() {
   rm -R result
 }
 echo "PATCH:"
-for i in $(seq -w 1 17); do test_case "$i"; done
+for i in $(seq -w 1 19); do test_case "$i"; done
 echo ""
 if [ $FAIL -gt 0 ]; then echo "PATCH: $FAIL FAIL"; exit 1; fi
 echo "PATCH: ALL PASS"
