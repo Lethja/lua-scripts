@@ -102,7 +102,7 @@ local function patch(p)
 				hunk=parseHunkHeader()
 				if hunk then
 					io.write("\t@@ -" .. hunk.old.start .. "," .. hunk.old.lines .. " +" .. hunk.new.start .. "," .. hunk.new.lines .. " @@: ")
-					local skip, line = hunk.old.start - 1
+					local skip, line = hunk.old.start > 0 and hunk.old.start - 1 or 0
 					if hunk.new.start - 1 ~= skip then print("malformed")os.exit(1) end
 					while bl < skip do
 						line, bl = bf:read("*l"), bl + 1
