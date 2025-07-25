@@ -8,10 +8,14 @@ test_case() {
   mkdir -p result
   cp "case$1"/* result
   cd "result"
-  $INTERP $SCRIPT a.txt b.txt > "diff"
-  patch -s --posix --batch -p0 < "diff"
+  diff -u a.txt b.txt > "diff-gnu"
+  $INTERP $SCRIPT a.txt b.txt > "diff-lua"
+  patch -s --posix --batch -p0 < "diff-lua"
   if { set +e; cmp -s a.txt b.txt; }; then
     printf "\tCASE %s: PASS\n" "$1"
+    printf "\t\tSIZE:\n\t\t\tGNU: %'6d\n\t\t\tLUA: %'6d\n"\
+      "$(stat -L -c%s diff-gnu)"\
+      "$(stat -L -c%s diff-lua)"
   else
     printf "\tCASE %s: FAIL\n" "$1"
     FAIL=$((FAIL + 1))
