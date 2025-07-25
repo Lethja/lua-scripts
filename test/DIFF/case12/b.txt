@@ -1,7 +1,4 @@
-Line1
+Changed Start
 Line2
 Line3
-CHANGED4
-Line5
-CHANGED6
-Line7
+Line4

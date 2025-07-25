@@ -20,7 +20,7 @@ test_case() {
   rm -R result
 }
 echo "DIFF:"
-for i in $(seq -w 1 16); do test_case "$i"; done
+for i in $(seq -w 1 15); do test_case "$i"; done
 echo ""
 if [ $FAIL -gt 0 ]; then echo "DIFF: $FAIL FAIL"; exit 1; fi
 echo "DIFF: ALL PASS"

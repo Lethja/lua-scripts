@@ -1,9 +1,7 @@
-A
-B
-C_changed
-D
-E
-F
-G
-H_changed
-I
+Line1
+Line2
+Line3
+CHANGED4
+Line5
+CHANGED6
+Line7
