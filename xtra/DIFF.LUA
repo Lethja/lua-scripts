@@ -1,9 +1,38 @@
 #!/usr/bin/env lua
 
 local CL,PF,CT,M=tonumber(os.getenv("DIFF_CONTEXT"))or 3,"I2I4I8",{},0xFFFFFFFF
-local function crc32(s)local c=M for i=1,#s do local byte=s:byte(i)c=(c >> 8)~CT[(c~byte)&0xFF]end return(~c)&M end
 local function diff_u(fn1,fn2)
-	local function open(fn)local f,e=io.open(fn)if not f then print(e)os.exit(1)end return f end
+	local function open(fn)
+		local f,e=io.open(fn, "rb")
+		if not f then print(e)os.exit(1)end
+		local offset,packed=0,""
+		local function crc32(s)local c=M for i=1,#s do local byte=s:byte(i)c=(c >> 8)~CT[(c~byte)&0xFF]end return(~c)&M end
+		while true do
+			local ls,l = offset,{}
+			while true do
+				local c = f:read(1)
+				if not c then break end
+				local function eol()
+					if c == '\r' then
+						local d = f:read(1)
+						f:seek(-1, "cur")
+						return d ~= '\n'
+					end
+					return c == '\n'
+				end
+				offset = offset + 1
+				table.insert(l, c)
+				if eol() then break end
+			end
+			if #l == 0 then break end
+			local full_line = table.concat(l)
+			local length, crc = #full_line, crc32(full_line)
+			packed = packed .. string.pack(PF, length, crc, ls)
+		end
+		f:close()
+		return packed
+	end
+	--TODO: Refactor code to work with packed data.
 	local f1,f2,p,a,d,p1,p2,x,y,B,h,l1,l2=open(fn1),open(fn2),{},{},{},0,0,0,0,{a=0,d=0,l={}}
 	local function FP()
 		local function SW(s) return string.match(s,"%s")and '"'..s..'"'or s end
@@ -29,6 +58,7 @@ local function diff_u(fn1,fn2)
 		else table.insert(p,l2)end x,y,l1,l2=x+1,y+1,f1:read("*l"),f2:read("*l")end
 	local function ri()FP()p1=(CL*2)+1 table.insert(d,l1)x,l1=x+1,f1:read("*l")end
 	local function dn()FP()p2=(CL*2)+1 table.insert(a,l2)y,l2=y+1,f2:read("*l")end
+	--TODO: Implement myers logic off of packed CRC32
 	repeat if l1==l2 then di()elseif not l2 then ri()elseif not l1 then dn()else ri()dn()end until not l1 and not l2 f1:close()f2:close()if#a>0 or#d>0 then FP()FH()end if#B.l>0 then FB()end end
 if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
 
