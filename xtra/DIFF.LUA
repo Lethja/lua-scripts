@@ -1,6 +1,7 @@
 #!/usr/bin/env lua
 
-CL=tonumber(os.getenv("DIFF_CONTEXT"))or 3
+local CL,PF,CT,M=tonumber(os.getenv("DIFF_CONTEXT"))or 3,"I2I4I8",{},0xFFFFFFFF
+local function crc32(s)local c=M for i=1,#s do local byte=s:byte(i)c=(c >> 8)~CT[(c~byte)&0xFF]end return(~c)&M end
 local function diff_u(fn1,fn2)
 	local function open(fn)local f,e=io.open(fn)if not f then print(e)os.exit(1)end return f end
 	local f1,f2,p,a,d,p1,p2,x,y,B,h,l1,l2=open(fn1),open(fn2),{},{},{},0,0,0,0,{a=0,d=0,l={}}
@@ -34,4 +35,5 @@ if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
 Compare differences between files, print them as unified context.
 To compare multiple files,write them sequentially.
 Example: ']]..arg[0]..[[ old1 new1 old2 new2 old3 new3' etc...]])os.exit(1)end
+for i=0,255 do local c=i for _=1,8 do c=(c&1~=0)and((c>>1)~0xEDB88320)or(c>>1)end CT[i]=c end
 for i=1,#arg,2 do diff_u(arg[i],arg[i+1])end
