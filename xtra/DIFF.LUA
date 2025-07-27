@@ -18,11 +18,11 @@ local function diff_u(fn1,fn2)
 			f:seek("set",o)local g=f:read(l)f:close()return g end
 		local b1,e,b2=line(fn1,o1,l1)if not b1 then error(e)end b2,e=line(fn2,o2,l2)if not b2 then error(e)end
 		return b1==b2 end
+	local h,w=#f1//ps,#f2//ps
 	local function print_table()
 		--TODO: store and reverse lookup this table to find the least amount of changes
-		local il,jl=#f1//ps,#f2//ps
-		for i=1,il do
-			local row={}for j=1,jl do table.insert(row,cmp(i,j)and"1"or"0")end
+		for i=1,h do
+			local row={}for j=1,w do table.insert(row,cmp(i,j)and"1"or"0")end
 			print(table.concat(row," "))end end
 	print_table()end
 if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
