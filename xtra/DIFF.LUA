@@ -18,13 +18,14 @@ local function diff_u(fn1,fn2)
 			f:seek("set",o)local g=f:read(l)f:close()return g end
 		local b1,e,b2=line(fn1,o1,l1)if not b1 then error(e)end b2,e=line(fn2,o2,l2)if not b2 then error(e)end
 		return b1==b2 end
-	local h,w=#f1//ps,#f2//ps
-	local function print_table()
-		--TODO: store and reverse lookup this table to find the least amount of changes
-		for i=1,h do
-			local row={}for j=1,w do table.insert(row,cmp(i,j)and"1"or"0")end
-			print(table.concat(row," "))end end
-	print_table()end
+	local h,w,m=#f1//ps,#f2//ps,{}for i=1,h do for j=1,w do if cmp(i,j)then table.insert(m,j+(h*(i-1)))end end end
+	local function score(x,y)local i,j=y+h*(x-1),1
+		repeat if m[j]<=i then j=j+1 else break end until (j>#m)return j-1 end
+	local x,y,path=h,w,{}
+	while x > 0 and y > 0 do
+		local s=score(x, y)if score(x-1,y-1)==s-1 then table.insert(path, 1, {x = x, y = y})x,y=x-1,y-1
+		elseif score(x - 1, y) == s then x=x-1 else y=y-1 end end
+end
 if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
 
 Compare differences between files, print them as unified context.
