@@ -19,12 +19,21 @@ local function diff_u(fn1,fn2)
 		local b1,e,b2=line(fn1,o1,l1)if not b1 then error(e)end b2,e=line(fn2,o2,l2)if not b2 then error(e)end
 		return b1==b2 end
 	local h,w,m=#f1//ps,#f2//ps,{}for i=1,h do for j=1,w do if cmp(i,j)then table.insert(m,j+(h*(i-1)))end end end
-	local function score(x,y)local i,j=y+h*(x-1),1
+	local function scr(x,y)local i,j=y+h*(x-1),1
 		repeat if m[j]<=i then j=j+1 else break end until (j>#m)return j-1 end
-	local x,y,path=h,w,{}
-	while x > 0 and y > 0 do
-		local s=score(x, y)if score(x-1,y-1)==s-1 then table.insert(path, 1, {x = x, y = y})x,y=x-1,y-1
-		elseif score(x - 1, y) == s then x=x-1 else y=y-1 end end
+	local x,y,path=h,w,{}while x>0 and y>0 do
+		local s=scr(x,y)if scr(x,y-1)==s-1 then table.insert(path,1,{x=x,y=y})x,y=x-1,y-1
+		elseif scr(x-1,y)==s then x=x-1 else y=y-1 end end
+	local function get(fn,p,i)
+		local l,_,o=string.unpack(PF,p,(i-1)*ps+1)
+		local f=assert(io.open(fn,"rb"))f:seek("set",o)
+		local r=f:read(l)f:close()return r end
+	local i,j=1,1 for _,p in ipairs(path)do
+		while i<p.x do io.write("-",get(fn1,f1,i))i=i+1 end
+		while j<p.y do io.write("+",get(fn2,f2,j))j=j+1 end
+		io.write(" ",get(fn1,f1,i))i,j=i+1,j+1 end
+	while i<=h do io.write("-",get(fn1,f1,i,ps))i=i+1 end
+	while j<=w do io.write("+",get(fn2,f2,j,ps))j=j+1 end
 end
 if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
 
