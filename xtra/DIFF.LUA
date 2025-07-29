@@ -28,14 +28,14 @@ local function diff_u(fn1,fn2)
 		local l,_,o=string.unpack(PF,p,(i-1)*ps+1)
 		local f=assert(io.open(fn,"rb"))f:seek("set",o)
 		local r=f:read(l)f:close()return r end
+	local function pfl(p,s)print(p..s:gsub('\n$',''):gsub('\r$',''))end
 	local i,j=1,1 for _,p in ipairs(path)do
-		while i<p.x do io.write("-",get(fn1,f1,i))i=i+1 end
-		while j<p.y do io.write("+",get(fn2,f2,j))j=j+1 end
-		io.write(" ",get(fn1,f1,i))i,j=i+1,j+1 end
-	local function nlc() if la then la=la:sub(-1)if la~='\n'and la~='\r'then print("\n\\ No newline at end of file")end end end
-	while i<=h do la=get(fn1,f1,i,ps)io.write("-",la)i=i+1 end nlc()
-	while j<=w do la=get(fn2,f2,j,ps)io.write("+",la)j=j+1 end nlc()
-end
+		while i<p.x do pfl("-",get(fn1,f1,i))i=i+1 end
+		while j<p.y do pfl("+",get(fn2,f2,j))j=j+1 end
+		pfl(" ",get(fn1,f1,i))i,j=i+1,j+1 end
+	local function nlc() if la then la=la:sub(-1)if la~='\n'and la~='\r'then print("\\ No newline at end of file")end end end
+	while i<=h do la=get(fn1,f1,i,ps)pfl("-",la)i=i+1 end nlc()
+	while j<=w do la=get(fn2,f2,j,ps)pfl("+",la)j=j+1 end nlc()end
 if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
 
 Compare differences between files, print them as unified context.
