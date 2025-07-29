@@ -9,7 +9,7 @@ local function diff_u(fn1,fn2)
 				local function eol()if c=='\r'then local d=f:read(1)f:seek("cur",-1)return d~='\n'end return c=='\n'end
 				o=o+1 table.insert(l,c)if eol()then break end end
 			if #l==0 then break end l=table.concat(l)local ln,c=#l,crc32(l)p=p..string.pack(PF,ln,c,ls)end f:close()return p end
-	local f1,f2,ps=open(fn1),open(fn2),string.packsize(PF)
+	local f1,f2,ps,la=open(fn1),open(fn2),string.packsize(PF)
 	local function cmp(x,y)
 		local l1,c1,o1,l2,c2,o2=string.unpack(PF,f1,(x-1)*ps+1)l2,c2,o2=string.unpack(PF,f2,(y-1)*ps+1)
 		if l1~=l2 or c1~=c2 then return false end
@@ -32,8 +32,9 @@ local function diff_u(fn1,fn2)
 		while i<p.x do io.write("-",get(fn1,f1,i))i=i+1 end
 		while j<p.y do io.write("+",get(fn2,f2,j))j=j+1 end
 		io.write(" ",get(fn1,f1,i))i,j=i+1,j+1 end
-	while i<=h do io.write("-",get(fn1,f1,i,ps))i=i+1 end
-	while j<=w do io.write("+",get(fn2,f2,j,ps))j=j+1 end
+	local function nlc() if la then la=la:sub(-1)if la~='\n'and la~='\r'then print("\n\\ No newline at end of file")end end end
+	while i<=h do la=get(fn1,f1,i,ps)io.write("-",la)i=i+1 end nlc()
+	while j<=w do la=get(fn2,f2,j,ps)io.write("+",la)j=j+1 end nlc()
 end
 if#arg<2 or#arg%2~=0 then print(arg[-1].." "..arg[0]..[[ old new...
 
