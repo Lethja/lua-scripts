@@ -6,7 +6,7 @@ local function diff_u(fn1,fn2)
 		local function crc32(s)local c=M for i=1,#s do local byte=s:byte(i)c=(c >> 8)~CT[(c~byte)&0xFF]end return(~c)&M end
 		local o,p=0,""while 1 do local ls,l=o,{}
 			while 1 do local c=f:read(1)if not c then break end
-				local function eol()if c=='\r'then local d=f:read(1)f:seek("cur",-1)return d~='\n'end return c=='\n'end
+				local function eol()if c=='\r'then local d=f:read(1)if not d then return true end f:seek("cur",-1)return d~='\n'end return c=='\n'end
 				o=o+1 table.insert(l,c)if eol()then break end end
 			if #l==0 then break end l=table.concat(l)local ln,c=#l,crc32(l)p=p..string.pack(PF,ln,c,ls)end f:close()return p end
 	local f1,f2,ps,la=open(fn1),open(fn2),string.packsize(PF)
