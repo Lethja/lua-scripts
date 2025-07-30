@@ -23,7 +23,7 @@ local function diff_u(fn1,fn2)
 		repeat if m[j]<=i then j=j+1 else break end until j>#m return j-1 end
 	local x,y,path=h,w,{}while x>0 and y>0 do
 		local s=scr(x,y)if scr(x,y-1)==s-1 then table.insert(path,1,{x=x,y=y})x,y=x-1,y-1
-		elseif scr(x-1,y)==s then x=x-1 else y=y-1 end end
+		elseif scr(x-1,y-1)==s then x=x-1 else y=y-1 end end
 	local function get(fn,p,i)
 		local l,_,o=string.unpack(PF,p,(i-1)*ps+1)
 		local f=assert(io.open(fn,"rb"))f:seek("set",o)
