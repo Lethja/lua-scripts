@@ -19,8 +19,8 @@ local function diff_u(fn1,fn2)
 		local b1,e,b2=line(fn1,o1,l1)if not b1 then error(e)end b2,e=line(fn2,o2,l2)if not b2 then error(e)end
 		return b1==b2 end
 	local h,w,m=#f1//ps,#f2//ps,{}for i=1,h do for j=1,w do if cmp(i,j)then table.insert(m,j+(h*(i-1)))end end end
-	local function scr(x,y)if #m==0 then return 0 end local i,j=y+h*(x-1),1
-		repeat if m[j]<=i then j=j+1 else break end until j>#m return j-1 end
+	local function scr(x,y)local i,j=y+h*(x-1),0
+		for k=1,#m do if m[k]<=i then j=j+1 else break end end return j end
 	local x,y,path=h,w,{}while x>0 and y>0 do
 		local s=scr(x,y)if scr(x,y-1)==s-1 then table.insert(path,1,{x=x,y=y})x,y=x-1,y-1
 		elseif scr(x-1,y-1)==s then x=x-1 else y=y-1 end end
