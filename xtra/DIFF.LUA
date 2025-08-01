@@ -18,19 +18,7 @@ local function diff_u(fn1,fn2)
 			f:seek("set",o)local g=f:read(l)f:close()return g end
 		local b1,e,b2=line(fn1,o1,l1)if not b1 then error(e)end b2,e=line(fn2,o2,l2)if not b2 then error(e)end
 		return b1==b2 end
-	local h,w,m=#f1//ps,#f2//ps,{}for i=1,h do for j=1,w do if cmp(i,j)then table.insert(m,j+(h*(i-1)))end end end
-	local function scr(x,y)local i,j=y+h*(x-1),0 for k=1,#m do if m[k]<=i then j=j+1 else return j,m[k]end end return j end
-	local x,y,path=h,w,{}
-	while x>0 and y>0 do
-		local s=scr(x,y)
-		if scr(x,y-1)==s-1 then
-			table.insert(path,1,{x=x,y=y})x,y=x-1,y-1
-		elseif scr(x-1,y-1)==s then
-			x=x-1
-		else
-			y=y-1
-		end
-	end
+	local h,w,m=#f1//ps,#f2//ps,{}for i=1,h do for j=1,w do if cmp(i,j)then table.insert(m,{y=j,x=i})end end end
 	local function get(fn,p,i)
 		local l,_,o=string.unpack(PF,p,(i-1)*ps+1)
 		local f=assert(io.open(fn,"rb"))f:seek("set",o)
@@ -38,7 +26,7 @@ local function diff_u(fn1,fn2)
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
 	local i,j,u=1,1
 	local function flush()if #u.l>0 then
-		if u.e==4 then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
+		if u.e>=4 then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
 		table.insert(u.l,1,"@@ -"..u.o.s..(u.o.l==1 and""or","..u.o.l).." +"..u.n.s..(u.n.l==1 and""or","..u.n.l).. " @@")
 		if not fh then
 			local function fn(s)return string.match(s,"%s")and '"'..s..'"'or s end
@@ -46,7 +34,7 @@ local function diff_u(fn1,fn2)
 		for _,v in ipairs(u.l) do print(v)end end u=nil end
 	local function init()if not u then local k,l=math.max(i-3,1),math.max(j-3,1)u={e=0,l={},o={s=k,l=0},n={s=l,l=0}}
 		for z=k,i-1 do table.insert(u.l,pfl(" ",get(fn1,f1,z)))u.o.l,u.n.l=u.o.l+1,u.n.l+1 end end end
-	for _,p in ipairs(path)do
+	for _,p in ipairs(m)do
 		while i<p.x do init()table.insert(u.l,pfl("-",get(fn1,f1,i)))i,u.o.l,u.e=i+1,u.o.l+1,0 end
 		while j<p.y do init()table.insert(u.l,pfl("+",get(fn2,f2,j)))j,u.n.l,u.e=j+1,u.n.l+1,0 end
 		if u then if u.e<4 then table.insert(u.l,pfl(" ",get(fn1,f1,i)))u.e,u.o.l,u.n.l=u.e+1,u.o.l+1,u.n.l+1 else flush()end end i,j=i+1,j+1 end
