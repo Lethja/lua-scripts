@@ -34,6 +34,7 @@ local function diff_u(fn1,fn2)
 		for _,v in ipairs(u.l) do print(v)end end u=nil end
 	local function init()if not u then local k,l=math.max(i-3,1),math.max(j-3,1)u={e=0,l={},o={s=k,l=0},n={s=l,l=0}}
 		for z=k,i-1 do table.insert(u.l,pfl(" ",get(fn1,f1,z)))u.o.l,u.n.l=u.o.l+1,u.n.l+1 end end end
+	local k=2 while k<=#m do if m[k].x>m[k-1].x then table.remove(m,k-1)else k=k+1 end end
 	for _,p in ipairs(m)do
 		while i<p.x do init()table.insert(u.l,pfl("-",get(fn1,f1,i)))i,u.o.l,u.e=i+1,u.o.l+1,0 end
 		while j<p.y do init()table.insert(u.l,pfl("+",get(fn2,f2,j)))j,u.n.l,u.e=j+1,u.n.l+1,0 end
