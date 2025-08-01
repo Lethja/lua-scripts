@@ -30,6 +30,7 @@ local function diff_u(fn1,fn2)
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
 	local i,j,u=1,1
 	local function flush()if #u.l>0 then
+		if u.e==4 then table.remove(u.l)end
 		table.insert(u.l,1,"@@ -"..u.o.s..(u.o.l==1 and""or","..u.o.l).." +"..u.n.s..(u.n.l==1 and""or","..u.n.l).. " @@")
 		if not fh then
 			local function fn(s)return string.match(s,"%s")and '"'..s..'"'or s end
@@ -40,7 +41,7 @@ local function diff_u(fn1,fn2)
 	for _,p in ipairs(path)do
 		while i<p.x do init()table.insert(u.l,pfl("-",get(fn1,f1,i)))i,u.o.l,u.e=i+1,u.o.l+1,0 end
 		while j<p.y do init()table.insert(u.l,pfl("+",get(fn2,f2,j)))j,u.n.l,u.e=j+1,u.n.l+1,0 end
-		if u then if u.e<3 then table.insert(u.l,pfl(" ",get(fn1,f1,i)))u.e,u.o.l,u.n.l=u.e+1,u.o.l+1,u.n.l+1 else flush()end end i,j=i+1,j+1 end
+		if u then if u.e<4 then table.insert(u.l,pfl(" ",get(fn1,f1,i)))u.e,u.o.l,u.n.l=u.e+1,u.o.l+1,u.n.l+1 else flush()end end i,j=i+1,j+1 end
 	local function nlc() if la then la=la:sub(-1)if la~='\n'and la~='\r'then table.insert(u.l,"\\ No newline at end of file")end end end
 	while i<=h do init()la=get(fn1,f1,i,ps)table.insert(u.l,pfl("-",la))i,u.o.l,u.e=i+1,u.o.l+1,0 end nlc()
 	while j<=w do init()la=get(fn2,f2,j,ps)table.insert(u.l,pfl("+",la))j,u.n.l,u.e=j+1,u.n.l+1,0 end nlc()
