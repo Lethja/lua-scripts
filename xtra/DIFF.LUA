@@ -30,7 +30,7 @@ local function diff_u(fn1,fn2)
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
 	local i,j,u=1,1
 	local function flush()if #u.l>0 then
-		if u.e==4 then table.remove(u.l)end
+		if u.e==4 then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
 		table.insert(u.l,1,"@@ -"..u.o.s..(u.o.l==1 and""or","..u.o.l).." +"..u.n.s..(u.n.l==1 and""or","..u.n.l).. " @@")
 		if not fh then
 			local function fn(s)return string.match(s,"%s")and '"'..s..'"'or s end
