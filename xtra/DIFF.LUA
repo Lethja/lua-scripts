@@ -15,18 +15,18 @@ local function diff_u(fn1,fn2)
 		local function li(fn,o,l)f,e=io.open(fn,"rb")if not f then return nil,e end f:seek(S,o)local g=f:read(l)f:close()return g end
 		b1,e,b2=li(fn1,o1,l1)if not b1 then error(e)end b2,e=li(fn2,o2,l2)if not b2 then error(e)end return b1==b2 end
 	h,w,m=#f1//ps,#f2//ps,{}
-	local function inList(l,v)for _,p in ipairs(l)do if v==p then return true end end return false end
 	for x=1,h do
-		for y=1,w do
-			if cmp(x,y)then
-				if #m>0 and m[#m].x==x then
-					table.insert(m[#m].y,y)
-				elseif #m>0 and m[#m].x==x-1 and inList(m[#m].y,y-1)then
-					m[#m].l=m[#m].l+1
-				else
-					table.insert(m,{y={y},x=x,l=1})
-				end
+		local b={}
+		for y=1,w do if cmp(x,y)then table.insert(b,y)end end
+		if #m>0 and m[#m].x+m[#m].l==x then
+			local function inList(v)for k,p in ipairs(b)do if v==p then return k end end end
+			if inList(m[#m].y+m[#m].l) then
+				m[#m].l=m[#m].l+1
+			else
+				--TODO: Know where to run the next block
 			end
+		else
+			table.insert(m,{y=b[1],x=x,l=1})
 		end
 	end
 	local function get(fn,p,x)local l,_,o,f,r=string.unpack(PF,p,(x-1)*ps+1)f=assert(io.open(fn,"rb"))f:seek(S,o)r=f:read(l)f:close()return r end
@@ -38,9 +38,10 @@ local function diff_u(fn1,fn2)
 	local function init()if not u then local k,l=math.max(i-3,1),math.max(j-3,1)u={e=0,l={},o={s=k,l=0},n={s=l,l=0}}
 		for z=k,i-1 do table.insert(u.l,pfl(" ",get(fn1,f1,z)))u.o.l,u.n.l=u.o.l+1,u.n.l+1 end end end
 	--TODO: Select correct y grid on each compare table
+  print("x","y","l")
 	for _,p in ipairs(m)do
 		-- Temporary debug code
-		print(p.x, p.l, table.concat(p.y,","))--[[
+		print(p.x, p.y, p.l)--[[
 		while i<p.x do init()table.insert(u.l,pfl("-",get(fn1,f1,i)))i,u.o.l,u.e=i+1,u.o.l+1,0 end
 		while j<p.y do init()table.insert(u.l,pfl("+",get(fn2,f2,j)))j,u.n.l,u.e=j+1,u.n.l+1,0 end
 		if u then if u.e<4 then table.insert(u.l,pfl(" ",get(fn1,f1,i)))u.e,u.o.l,u.n.l=u.e+1,u.o.l+1,u.n.l+1 else flush()end end i,j=i+1,j+1 end
