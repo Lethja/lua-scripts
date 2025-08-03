@@ -17,16 +17,23 @@ local function diff_u(fn1,fn2)
 	h,w,m=#f1//ps,#f2//ps,{}
 	for x=1,h do
 		local b={}
+		local function inList(v)for k,p in ipairs(b)do if v==p then return k end end end
 		for y=1,w do if cmp(x,y)then table.insert(b,y)end end
 		if #m>0 and m[#m].x+m[#m].l==x then
-			local function inList(v)for k,p in ipairs(b)do if v==p then return k end end end
 			if inList(m[#m].y+m[#m].l) then
 				m[#m].l=m[#m].l+1
 			else
 				--TODO: Know where to run the next block
+				local n=inList(m[#m].y+m[#m].l)
+				if n then
+					table.insert(m,{y=b[n],x=x,l=1})
+				end
 			end
 		else
-			table.insert(m,{y=b[1],x=x,l=1})
+			if #b>0 then
+				local n=#m>0 and inList(m[#m].y+m[#m].l) or 1
+				table.insert(m,{y=b[n],x=x,l=1})
+			end
 		end
 	end
 	local function get(fn,p,x)local l,_,o,f,r=string.unpack(PF,p,(x-1)*ps+1)f=assert(io.open(fn,"rb"))f:seek(S,o)r=f:read(l)f:close()return r end
