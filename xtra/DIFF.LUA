@@ -46,7 +46,7 @@ local function diff_u(fn1,fn2)
 			j,u.n.l,u.e=j+1,u.n.l+1,0
 		end
 		if u then
-			if u.e<4 and i<=h then
+			if u.e<4 and i<=h and j<=w then
 				table.insert(u.l,pfl(" ",get(fn1,f1,i)))
 				u.e,u.o.l,u.n.l=u.e+1,u.o.l+1,u.n.l+1
 			else
