@@ -15,19 +15,20 @@ local function diff_u(fn1,fn2)
 		local function li(fn,o,l)f,e=io.open(fn,"rb")if not f then return nil,e end f:seek(S,o)local g=f:read(l)f:close()return g end
 		b1,e,b2=li(fn1,o1,l1)if not b1 then error(e)end b2,e=li(fn2,o2,l2)if not b2 then error(e)end return b1==b2 end
 	h,w,m=#f1//ps,#f2//ps,{}
-	local ly,n=1
+	local ly,l,n=1
 	for x=1,h do
 		local b={}
 		local function inList(v)for k,p in ipairs(b)do if v==p then return k end end end
 		for y=ly,w do if cmp(x,y)then table.insert(b,y)end end
 		if #b>0 then
 			if #m>0 then
-				if m[#m].x+m[#m].l==x then
-					n=inList(m[#m].y+m[#m].l)
-					if n then m[#m].l=m[#m].l+1 end
+				l=m[#m]
+				if l.x+l.l==x then
+					n=inList(l.y+l.l)
+					if n then l.l=l.l+1 end
 				else
 					--TODO: calculate how far ahead we should be from last and current x and y
-					n=inList(m[#m].y+m[#m].l)
+					n=inList(l.y+l.l)
 					if n then table.insert(m,{y=b[n],x=x,l=1}) end
 				end
 			else
