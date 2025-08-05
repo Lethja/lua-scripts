@@ -50,11 +50,14 @@ local function diff_u(fn1,fn2)
 			j,u.n.l,u.e=j+1,u.n.l+1,0
 		end
 		if u then
-			while u.e<4 and i<=h and j<=w do
+			local c=p.l>5 and 4 or p.l
+			while u.e<c and i<=h and j<=w do
 				table.insert(u.l,pfl(" ",get(fn1,f1,i)))
 				i,j,u.e,u.o.l,u.n.l=i+1,j+1,u.e+1,u.o.l+1,u.n.l+1
 			end
-		flush()
+			if p.l>5 then
+				flush()
+			end
 		end
 		i,j=p.x+p.l,p.y+p.l
 	end
