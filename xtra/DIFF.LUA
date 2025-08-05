@@ -18,7 +18,11 @@ local function diff_u(fn1,fn2)
 	for x=1,h do
 		for y=la,w do
 			if cmp(x,y)then
-				table.insert(m,{y=y,x=x})
+				if #m>0 and m[#m].x+m[#m].l==x and m[#m].y+m[#m].l==y then
+					m[#m].l=m[#m].l+1
+				else
+					table.insert(m,{y=y,x=x,l=1})
+				end
 				la=y
 				break
 			end
@@ -46,13 +50,13 @@ local function diff_u(fn1,fn2)
 			j,u.n.l,u.e=j+1,u.n.l+1,0
 		end
 		if u then
-			if u.e<4 and i<=h and j<=w then
+			while u.e<4 and i<=h and j<=w do
 				table.insert(u.l,pfl(" ",get(fn1,f1,i)))
-				u.e,u.o.l,u.n.l=u.e+1,u.o.l+1,u.n.l+1
-			else
-				flush()
+				i,j,u.e,u.o.l,u.n.l=i+1,j+1,u.e+1,u.o.l+1,u.n.l+1
 			end
-		end i,j=i+1,j+1
+		flush()
+		end
+		i,j=p.x+p.l,p.y+p.l
 	end
 	local function nlc()if la then la=la:sub(-1)if la~='\n'and la~='\r'then table.insert(u.l,"\\ No newline at end of file")end end end
 	while i<=h do init()la=get(fn1,f1,i,ps)table.insert(u.l,pfl("-",la))i,u.o.l,u.e=i+1,u.o.l+1,0 end nlc()
