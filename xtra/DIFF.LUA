@@ -14,21 +14,14 @@ local function diff_u(fn1,fn2)
 		local l1,c1,o1,l2,c2,o2,b1,e,b2,f=string.unpack(PF,f1,(x-1)*ps+1)l2,c2,o2=string.unpack(PF,f2,(y-1)*ps+1)if l1~=l2 or c1~=c2 then return false end
 		local function li(fn,o,l)f,e=io.open(fn,"rb")if not f then return nil,e end f:seek(S,o)local g=f:read(l)f:close()return g end
 		b1,e,b2=li(fn1,o1,l1)if not b1 then error(e)end b2,e=li(fn2,o2,l2)if not b2 then error(e)end return b1==b2 end
-	h,w,la,m,L=#f1//ps,#f2//ps,1,{},{}
-	-- full matrix LCS
-	for x=0,h do L[x]={}for y=0,w do if x==0 or y==0 then L[x][y]=0
+	h,w,la,m,L=#f1//ps,#f2//ps,1,{},{} for x=0,h do L[x]={}for y=0,w do if x==0 or y==0 then L[x][y]=0
 		elseif cmp(x,y)then L[x][y]=L[x-1][y-1]+1
 		else L[x][y]=(L[x-1][y]>L[x][y-1])and L[x-1][y]or L[x][y-1]end end end
-
-	-- backtrack to extract the matching coordinates
 	i,j=h,w while i > 0 and j > 0 do
 		if cmp(i,j)then table.insert(m,1,{x=i,y=j,l=1})i,j=i-1,j-1
 		elseif L[i-1][j]>=L[i][j-1]then i=i-1 else j=j-1 end end
-
-	-- coalesce adjacent 1‐line runs into multi‐line matches
 	local co={}for _,p in ipairs(m)do local t=co[#co] if t and t.x+t.l==p.x and t.y+t.l==p.y then t.l=t.l+1 else co[#co+1]={x=p.x,y=p.y,l=p.l}end end
 	m,la,i,j=co,nil,1,1
-
 	local function get(fn,p,x)local l,_,o,f,r=string.unpack(PF,p,(x-1)*ps+1)f=assert(io.open(fn,"rb"))f:seek(S,o)r=f:read(l)f:close()return r end
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
 	local function flush()if #u.l>0 then if u.e>=4 then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
@@ -37,31 +30,12 @@ local function diff_u(fn1,fn2)
 		for _,v in ipairs(u.l)do print(v)end end u=nil end
 	local function init()if not u then local k,l=math.max(i-3,1),math.max(j-3,1)u={e=0,l={},o={s=k,l=0},n={s=l,l=0}}
 		for z=k,i-1 do table.insert(u.l,pfl(" ",get(fn1,f1,z)))u.o.l,u.n.l=u.o.l+1,u.n.l+1 end end end
-	--local k=2 while k<=#m do if m[k].x>m[k-1].x then table.remove(m,k-1)else k=k+1 end end
-	--TODO: convert to sequences
 	for _,p in ipairs(m)do
-		while i<p.x do
-			init()
-			table.insert(u.l,pfl("-",get(fn1,f1,i)))
-			i,u.o.l,u.e=i+1,u.o.l+1,0
-		end
-		while j<p.y do
-			init()
-			table.insert(u.l,pfl("+",get(fn2,f2,j)))
-			j,u.n.l,u.e=j+1,u.n.l+1,0
-		end
-		if u then
-			local c=p.l>5 and 4 or p.l
-			while u.e<c and i<=h and j<=w do
-				table.insert(u.l,pfl(" ",get(fn1,f1,i)))
-				i,j,u.e,u.o.l,u.n.l=i+1,j+1,u.e+1,u.o.l+1,u.n.l+1
-			end
-			if p.l>5 then
-				flush()
-			end
-		end
-		i,j=p.x+p.l,p.y+p.l
-	end
+		while i<p.x do init()table.insert(u.l,pfl("-",get(fn1,f1,i)))i,u.o.l,u.e=i+1,u.o.l+1,0 end
+		while j<p.y do init()table.insert(u.l,pfl("+",get(fn2,f2,j)))j,u.n.l,u.e=j+1,u.n.l+1,0 end
+		if u then local c=p.l>5 and 4 or p.l while u.e<c and i<=h and j<=w do
+			table.insert(u.l,pfl(" ",get(fn1,f1,i)))i,j,u.e,u.o.l,u.n.l=i+1,j+1,u.e+1,u.o.l+1,u.n.l+1 end if p.l>5 then flush() end end
+		i,j=p.x+p.l,p.y+p.l end
 	local function nlc()if la then la=la:sub(-1)if la~='\n'and la~='\r'then table.insert(u.l,"\\ No newline at end of file")end end end
 	while i<=h do init()la=get(fn1,f1,i,ps)table.insert(u.l,pfl("-",la))i,u.o.l,u.e=i+1,u.o.l+1,0 end nlc()
 	while j<=w do init()la=get(fn2,f2,j,ps)table.insert(u.l,pfl("+",la))j,u.n.l,u.e=j+1,u.n.l+1,0 end nlc()
