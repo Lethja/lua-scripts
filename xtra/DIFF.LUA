@@ -9,72 +9,25 @@ local function diff_u(fn1,fn2)
 				local function eol()if c=='\r'then local d=f:read(1)if not d then return true end f:seek("cur",-1)return d~='\n'end return c=='\n'end
 				o=o+1 table.insert(l,c)if eol()then break end end
 			if #l==0 then break end l=table.concat(l)local ln,c=#l,crc32(l)p=p..string.pack(PF,ln,c,ls)end f:close()return p end
-	local f1,f2,ps,i,j,la,fh,h,w,m,u=open(fn1),open(fn2),string.packsize(PF),1,1
+	local f1,f2,ps,i,j,la,fh,h,w,m,u,L=open(fn1),open(fn2),string.packsize(PF),1,1
 	local function cmp(x,y)
 		local l1,c1,o1,l2,c2,o2,b1,e,b2,f=string.unpack(PF,f1,(x-1)*ps+1)l2,c2,o2=string.unpack(PF,f2,(y-1)*ps+1)if l1~=l2 or c1~=c2 then return false end
 		local function li(fn,o,l)f,e=io.open(fn,"rb")if not f then return nil,e end f:seek(S,o)local g=f:read(l)f:close()return g end
 		b1,e,b2=li(fn1,o1,l1)if not b1 then error(e)end b2,e=li(fn2,o2,l2)if not b2 then error(e)end return b1==b2 end
-	h,w,la,m=#f1//ps,#f2//ps,1,{}
-	local function build(a1,a2,alo,ahi,blo,bhi)
-		if alo>ahi or blo>bhi then return end
-		if alo==ahi then
-			for j=blo,bhi do
-				if cmp(alo,j) then
-					m[#m+1] = { x=alo, y=j, l=1 }
-					break
-				end
-			end
-			return
-		end
-		local mid = (alo+ahi)//2
-		-- forward DP from alo..mid
-		local F = {}
-		for j=blo, bhi do F[j]=0 end
-		for i=alo, mid do
-			local prev = 0
-			for j=blo, bhi do
-				local save = F[j]
-				if cmp(i,j) then F[j] = prev + 1
-				elseif F[j-1] and F[j-1] > F[j] then F[j] = F[j-1] end
-				prev = save
-			end
-		end
-		-- backward DP from ahi..mid+1
-		local B = {}
-		for j=blo, bhi do B[j]=0 end
-		for i=ahi, mid+1, -1 do
-			local prev = 0
-			for j=bhi, blo, -1 do
-				local save = B[j]
-				if cmp(i,j) then B[j] = prev + 1
-				elseif B[j+1] and B[j+1] > B[j] then B[j] = B[j+1] end
-				prev = save
-			end
-		end
-		-- find best split on the B-axis
-		local best,jcut = -1,blo
-		for j=blo,bhi do
-			local s = (F[j] or 0) + (B[j] or 0)
-			if s>best then best,s,jcut = s,s,j end
-		end
-		-- recurse on the two halves
-		build(a1,a2,alo, mid, blo, jcut)
-		build(a1,a2,mid+1,ahi, jcut+1, bhi)
-	end
+	h,w,la,m,L=#f1//ps,#f2//ps,1,{},{}
+	-- full matrix LCS
+	for x=0,h do L[x]={}for y=0,w do if x==0 or y==0 then L[x][y]=0
+		elseif cmp(x,y)then L[x][y]=L[x-1][y-1]+1
+		else L[x][y]=(L[x-1][y]>L[x][y-1])and L[x-1][y]or L[x][y-1]end end end
 
-	build(fn1,fn2, 1, h, 1, w)
+	-- backtrack to extract the matching coordinates
+	i,j=h,w while i > 0 and j > 0 do
+		if cmp(i,j)then table.insert(m,1,{x=i,y=j,l=1})i,j=i-1,j-1
+		elseif L[i-1][j]>=L[i][j-1]then i=i-1 else j=j-1 end end
 
-	local co = {}
-	for _,p in ipairs(m) do
-		local t = co[#co]
-		if t and t.x+t.l==p.x and t.y+t.l==p.y then
-			t.l = t.l + 1
-		else
-			co[#co+1] = { x=p.x, y=p.y, l=1 }
-		end
-	end
-	m = co
-	la=nil
+	-- coalesce adjacent 1‐line runs into multi‐line matches
+	local co={}for _,p in ipairs(m)do local t=co[#co] if t and t.x+t.l==p.x and t.y+t.l==p.y then t.l=t.l+1 else co[#co+1]={x=p.x,y=p.y,l=p.l}end end
+	m,la,i,j=co,nil,1,1
 
 	local function get(fn,p,x)local l,_,o,f,r=string.unpack(PF,p,(x-1)*ps+1)f=assert(io.open(fn,"rb"))f:seek(S,o)r=f:read(l)f:close()return r end
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
