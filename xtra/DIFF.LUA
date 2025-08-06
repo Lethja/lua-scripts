@@ -1,6 +1,6 @@
 #!/usr/bin/env lua
 
-local PF,CT,M,S="I2I4I8",{},0xFFFFFFFF,"set"
+local PF,CT,M,S,CL="I2I4I8",{},0xFFFFFFFF,"set",tonumber(os.getenv("DIFF_CONTEXT"))or 3
 local function diff_u(fn1,fn2)
 	local function open(fn)local f,e=io.open(fn,"rb")if not f then print(e)os.exit(1)end
 		local function crc32(s)local c=M for i=1,#s do local byte=s:byte(i)c=(c >> 8)~CT[(c~byte)&0xFF]end return(~c)&M end
@@ -9,7 +9,7 @@ local function diff_u(fn1,fn2)
 				local function eol()if c=='\r'then local d=f:read(1)if not d then return true end f:seek("cur",-1)return d~='\n'end return c=='\n'end
 				o=o+1 table.insert(l,c)if eol()then break end end
 			if #l==0 then break end l=table.concat(l)local ln,c=#l,crc32(l)p=p..string.pack(PF,ln,c,ls)end f:close()return p end
-	local f1,f2,ps,i,j,la,fh,h,w,m,u,L=open(fn1),open(fn2),string.packsize(PF),1,1
+	local f1,f2,ps,co,i,j,la,fh,h,w,m,u,L=open(fn1),open(fn2),string.packsize(PF),{}
 	local function cmp(x,y)
 		local l1,c1,o1,l2,c2,o2,b1,e,b2,f=string.unpack(PF,f1,(x-1)*ps+1)l2,c2,o2=string.unpack(PF,f2,(y-1)*ps+1)if l1~=l2 or c1~=c2 then return false end
 		local function li(fn,o,l)f,e=io.open(fn,"rb")if not f then return nil,e end f:seek(S,o)local g=f:read(l)f:close()return g end
@@ -20,11 +20,11 @@ local function diff_u(fn1,fn2)
 	i,j=h,w while i > 0 and j > 0 do
 		if cmp(i,j)then table.insert(m,1,{x=i,y=j,l=1})i,j=i-1,j-1
 		elseif L[i-1][j]>=L[i][j-1]then i=i-1 else j=j-1 end end
-	local co={}for _,p in ipairs(m)do local t=co[#co] if t and t.x+t.l==p.x and t.y+t.l==p.y then t.l=t.l+1 else co[#co+1]={x=p.x,y=p.y,l=p.l}end end
+	for _,p in ipairs(m)do local t=co[#co] if t and t.x+t.l==p.x and t.y+t.l==p.y then t.l=t.l+1 else co[#co+1]={x=p.x,y=p.y,l=p.l}end end
 	m,la,i,j=co,nil,1,1
 	local function get(fn,p,x)local l,_,o,f,r=string.unpack(PF,p,(x-1)*ps+1)f=assert(io.open(fn,"rb"))f:seek(S,o)r=f:read(l)f:close()return r end
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
-	local function flush()if #u.l>0 then if u.e>=4 then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
+	local function flush()if #u.l>0 then if u.e>CL then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
 		table.insert(u.l,1,"@@ -"..u.o.s..(u.o.l==1 and""or","..u.o.l).." +"..u.n.s..(u.n.l==1 and""or","..u.n.l).. " @@")
 		if not fh then local function fn(s)return string.match(s,"%s")and'"'..s..'"'or s end table.insert(u.l,1,"+++ "..fn(fn2))table.insert(u.l,1,"--- "..fn(fn1))fh=true end
 		for _,v in ipairs(u.l)do print(v)end end u=nil end
@@ -33,8 +33,7 @@ local function diff_u(fn1,fn2)
 	for _,p in ipairs(m)do
 		while i<p.x do init()table.insert(u.l,pfl("-",get(fn1,f1,i)))i,u.o.l,u.e=i+1,u.o.l+1,0 end
 		while j<p.y do init()table.insert(u.l,pfl("+",get(fn2,f2,j)))j,u.n.l,u.e=j+1,u.n.l+1,0 end
-		if u then local c=p.l>5 and 4 or p.l while u.e<c and i<=h and j<=w do
-			table.insert(u.l,pfl(" ",get(fn1,f1,i)))i,j,u.e,u.o.l,u.n.l=i+1,j+1,u.e+1,u.o.l+1,u.n.l+1 end if p.l>5 then flush() end end
+		if u then local c=p.l>CL+2 and CL+1 or p.l while u.e<c and i<=h and j<=w do table.insert(u.l,pfl(" ",get(fn1,f1,i)))i,j,u.e,u.o.l,u.n.l=i+1,j+1,u.e+1,u.o.l+1,u.n.l+1 end if p.l>5 then flush() end end
 		i,j=p.x+p.l,p.y+p.l end
 	local function nlc()if la then la=la:sub(-1)if la~='\n'and la~='\r'then table.insert(u.l,"\\ No newline at end of file")end end end
 	while i<=h do init()la=get(fn1,f1,i,ps)table.insert(u.l,pfl("-",la))i,u.o.l,u.e=i+1,u.o.l+1,0 end nlc()
