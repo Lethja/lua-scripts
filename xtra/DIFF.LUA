@@ -15,19 +15,67 @@ local function diff_u(fn1,fn2)
 		local function li(fn,o,l)f,e=io.open(fn,"rb")if not f then return nil,e end f:seek(S,o)local g=f:read(l)f:close()return g end
 		b1,e,b2=li(fn1,o1,l1)if not b1 then error(e)end b2,e=li(fn2,o2,l2)if not b2 then error(e)end return b1==b2 end
 	h,w,la,m=#f1//ps,#f2//ps,1,{}
-	for x=1,h do
-		for y=la,w do
-			if cmp(x,y)then
-				if #m>0 and m[#m].x+m[#m].l==x and m[#m].y+m[#m].l==y then
-					m[#m].l=m[#m].l+1
-				else
-					table.insert(m,{y=y,x=x,l=1})
+	local function build(a1,a2,alo,ahi,blo,bhi)
+		if alo>ahi or blo>bhi then return end
+		if alo==ahi then
+			for j=blo,bhi do
+				if cmp(alo,j) then
+					m[#m+1] = { x=alo, y=j, l=1 }
+					break
 				end
-				la=y
-				break
+			end
+			return
+		end
+		local mid = (alo+ahi)//2
+		-- forward DP from alo..mid
+		local F = {}
+		for j=blo, bhi do F[j]=0 end
+		for i=alo, mid do
+			local prev = 0
+			for j=blo, bhi do
+				local save = F[j]
+				if cmp(i,j) then F[j] = prev + 1
+				elseif F[j-1] and F[j-1] > F[j] then F[j] = F[j-1] end
+				prev = save
 			end
 		end
-	end la=nil
+		-- backward DP from ahi..mid+1
+		local B = {}
+		for j=blo, bhi do B[j]=0 end
+		for i=ahi, mid+1, -1 do
+			local prev = 0
+			for j=bhi, blo, -1 do
+				local save = B[j]
+				if cmp(i,j) then B[j] = prev + 1
+				elseif B[j+1] and B[j+1] > B[j] then B[j] = B[j+1] end
+				prev = save
+			end
+		end
+		-- find best split on the B-axis
+		local best,jcut = -1,blo
+		for j=blo,bhi do
+			local s = (F[j] or 0) + (B[j] or 0)
+			if s>best then best,s,jcut = s,s,j end
+		end
+		-- recurse on the two halves
+		build(a1,a2,alo, mid, blo, jcut)
+		build(a1,a2,mid+1,ahi, jcut+1, bhi)
+	end
+
+	build(fn1,fn2, 1, h, 1, w)
+
+	local co = {}
+	for _,p in ipairs(m) do
+		local t = co[#co]
+		if t and t.x+t.l==p.x and t.y+t.l==p.y then
+			t.l = t.l + 1
+		else
+			co[#co+1] = { x=p.x, y=p.y, l=1 }
+		end
+	end
+	m = co
+	la=nil
+
 	local function get(fn,p,x)local l,_,o,f,r=string.unpack(PF,p,(x-1)*ps+1)f=assert(io.open(fn,"rb"))f:seek(S,o)r=f:read(l)f:close()return r end
 	local function pfl(p,s)return(p..s:gsub('\n$',''):gsub('\r$',''))end
 	local function flush()if #u.l>0 then if u.e>=4 then table.remove(u.l)u.o.l,u.n.l=u.o.l-1,u.n.l-1 end
