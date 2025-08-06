@@ -92,26 +92,14 @@ local function patch(p)
 						new = { start = tonumber(new[1]), lines = tonumber(new[2]) or 1 }
 					}
 				end
-				if hunk then
-					if bl - hunk.old.start ~= hunk.old.lines or ol - hunk.new.start ~= hunk.new.lines then
-						print("malformed")os.exit(1)
-					else
-						print("patched")
-					end
-				end
-				hunk=parseHunkHeader()
-				if hunk then
-					io.write("\t@@ -" .. hunk.old.start .. "," .. hunk.old.lines .. " +" .. hunk.new.start .. "," .. hunk.new.lines .. " @@: ")
-					local skip, line = hunk.old.start > 0 and hunk.old.start - 1 or 0
-					if hunk.new.start - 1 ~= skip then print("malformed")os.exit(1) end
-					while bl < skip do
-						line, bl = bf:read("*l"), bl + 1
-						if of then of:write(line .. '\n') ol = ol + 1 end
-					end
-				end
-			end
-		end
-	end
+				if hunk then if hunk.old.lines~=bl-(hunk.old.start-1)or hunk.new.lines~=ol-(hunk.new.start-1)then print("malformed")os.exit(1)else print("patched")end end
+				hunk=parseHunkHeader()if hunk then
+					io.write("\t@@ -"..hunk.old.start..","..hunk.old.lines.." +"..hunk.new.start..","..hunk.new.lines.." @@: ")
+					local skip=hunk.old.start>0 and(hunk.old.start-1)-bl or 0
+					if skip<0 then print("malformed (overlapping hunk)")os.exit(1)end
+					for _=1,skip do
+						local ctx=bf:read("*l")if not ctx then print("malformed (unexpected EOF in context)")os.exit(1)end
+						bl=bl+1 if of then of:write(ctx.."\n")ol=ol+1 end end end end end end
 	pf:close()
 	if hunk then print("patched") end
 	if bf then writeRemainder() end
