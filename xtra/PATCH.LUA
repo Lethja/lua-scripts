@@ -1,9 +1,8 @@
 #!/usr/bin/env lua
 
 M="malformed"
-local function patch(p)
-	local pf,e=io.open(p)local ol,bl,cp,of,bf,h=0,0
-	if not pf then print(e)os.exit(1)end
+local function patch(pf)
+	local ol,bl,cp,of,bf,h,e=0,0
 	local function parseFileName(l)local first=l:sub(5,5)
 		if first=='"'or first=="'"then return l:match(first.."([^"..first.."]+)"..first,5)
 		else local words={}for v in string.gmatch(l,"%S+")do table.insert(words,v)end return words[2]end end
@@ -42,7 +41,8 @@ local function patch(p)
 				for _=1,s do
 					local ctx=bf:read("*l")if not ctx then print(M)os.exit(1)end
 					bl=bl+1 if of then of:write(ctx.."\n")ol=ol+1 end end end end end end
-	pf:close()if bf then writeRemainder()end end
+	if bf then writeRemainder()end end
 if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
 
-Patch a unified difference file]])os.exit(1)end patch(arg[1])
+Patch unified difference file(s)]])os.exit(1)end
+for _,a in ipairs(arg) do local f,e=io.open(a) if f then patch(f)f:close()else print(e)end end
