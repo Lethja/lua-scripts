@@ -43,7 +43,7 @@ The script performs the following steps:
     - The function `diff_u` performs the actual comparison:
         - It reads two files line by line.
         - It tracks which lines are added, removed, 
-        or unchanged between the two files using the Myers diff algorithm
+        or unchanged between the two files using a full matrix diff algorithm
         - It groups changes in "hunks,"
         which are logical sections of differences, 
         and formats these differences in the unified diff style.
@@ -67,12 +67,12 @@ The script performs the following steps:
 
 ## Functions
 
-| Function | Parameters                                      | Description                                                                 |
-|----------|-------------------------------------------------|-----------------------------------------------------------------------------|
-| `diff_u` | **f**ile**n**ame**1**<br/>**f**ile**n**ame**2** | Prints differences between the two files in to stdout.                      |
-| `fp`     |                                                 | **F**lushes **p**re-context lines into the buffer when changes are detected |
-| `fh`     |                                                 | **F**lushes a complete **h**unk of changes into the buffer                  |
-| `fb`     |                                                 | **F**lush (print) and clear the **b**uffer                                  |
-| `di`     |                                                 | **D**iagonally **i**terate (lines that match in both files)                 |
-| `ri`     |                                                 | **Ri**ght iterate (for a line only present in the old file)                 |
-| `dn`     |                                                 | **D**ow**n** Iterate (for a line only present in the new file)              |
+| Function | Parameters                                      | Description                                                                                                                                        |
+|----------|-------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `diff_u` | **f**ile**n**ame**1**<br/>**f**ile**n**ame**2** | Prints differences between the two files in to stdout.                                                                                             |
+| `cmp`    | x</br>y                                         | **C**o**mp**ares line `x` in the old file with line `y` in the new file                                                                            |
+| `get`    | filename<br>packedIdx<br>idx                    | Open seek and read line `idx` of `filename`                                                                                                        |
+| `pfl`    | marker<br>line                                  | **F**ormats a single diff **l**ine by **p**refixing `marker` and stripping newlines                                                                |
+| `init`   |                                                 | Begins a new hunk: collects up to `DIFF_CONTEXT` lines of unchanged context before the first change in a hunk.                                     |
+| `flush`  |                                                 | Emits the current hunk buffer to stdout once either enough changes have accumulated or the hunk is closed. Prepends the unified-diff hunk header.  |
+| `nlc`    |                                                 | After finishing a file, checks if the last line lacked a newline and, if so, inserts a `\ No newline at end of file` marker into the current hunk. |
