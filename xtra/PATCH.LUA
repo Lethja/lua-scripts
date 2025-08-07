@@ -42,4 +42,6 @@ local function patch(p)
 					local ctx=bf:read("*l")if not ctx then print(M)os.exit(1)end
 					bl=bl+1 if of then of:write(ctx.."\n")ol=ol+1 end end end end end end
 	pf:close()if h then print("patched")end if bf then writeRemainder()end end
-if #arg<1 then os.exit(1)end patch(arg[1])
+if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
+
+Patch a unified difference file]])os.exit(1)end patch(arg[1])
