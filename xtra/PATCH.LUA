@@ -14,19 +14,19 @@ local function patch(p)
 		for m in o:lines()do b:write(m..'\n')end o:close()b:close()
 		o,e=io.open(f,"w")if not o then return abort()end
 		b,e=io.open(f..".orig")if not b then return abort()end
-		if of then of:close()end if bf then bf:close()end of=o bf=b return true end
-	local function writeRemainder()if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()end bf:close()end
+		if of then of:close()end if bf then bf:close()end of,ol,bf,bl,h=o,0,b,0,nil return true end
+	local function writeRemainder()if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()of,ol=nil,0 end bf:close()bf,bl,h=nil,0,nil end
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
 		if ls=='+'then
-			if l:sub(2,4)=="++ " then --ignore
-			else if of then local nl=n and n:match("^\\ No newline at end of file")of:write(l:sub(2)..(nl and""or'\n'))ol=ol + 1 end end
+			if l:sub(2,4)=="++ " then--ignore
+			else if of then local nl=n and n:match("^\\ No newline at end of file")of:write(l:sub(2)..(nl and""or'\n'))ol=ol+1 end end
 		elseif ls=='-'then
 			if l:sub(2,4)=="-- " then local filename=parseFileName(l)if bf then writeRemainder()end
 				if setPatchFile(filename)then cp=filename print("\n'"..cp.."':")end
-			else local cmp=bf:read("*l")bl=bl + 1 if cmp ~=l:sub(2)then print(M)os.exit(1)end end
+			else local cmp=bf:read("*l")bl=bl+1 if cmp~=l:sub(2)then print(M)os.exit(1)end end
 		elseif ls==' 'then
-			if bf then local cmp,line=bf:read("*l"),l:sub(2)bl=bl + 1 if cmp==line then if of then of:write(line..'\n')ol=ol + 1 end else print(M)os.exit(1)end end
+			if bf then local cmp,line=bf:read("*l"),l:sub(2)bl=bl+1 if cmp==line then if of then of:write(line..'\n')ol=ol+1 end else print(M)os.exit(1)end end
 		elseif ls=='@'then if l:sub(2,3)=="@ " then
 			local function parseHunkHeader()
 				local function split(i,d)local r={}for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
