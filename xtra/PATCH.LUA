@@ -9,11 +9,11 @@ local function patch(p)
 		else local words={}for v in string.gmatch(l,"%S+")do table.insert(words,v)end return words[2]end end
 	local function setPatchFile(f)
 		local o,b local function abort()print(e)if o then o:close()end if b then b:close()end return false end
-		o,e=io.open(f)if not o then return abort end
-		b,e=io.open(f..".orig","w")if not b then return abort end
+		o,e=io.open(f)if not o then return abort()end
+		b,e=io.open(f..".orig","w")if not b then return abort()end
 		for m in o:lines()do b:write(m..'\n')end o:close()b:close()
-		o,e=io.open(f,"w")if not o then return abort end
-		b,e=io.open(f..".orig")if not b then return abort end
+		o,e=io.open(f,"w")if not o then return abort()end
+		b,e=io.open(f..".orig")if not b then return abort()end
 		if of then of:close()end if bf then bf:close()end of=o bf=b return true end
 	local function writeRemainder()if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()end bf:close()end
 	local n=pf:read("*l")while n do
