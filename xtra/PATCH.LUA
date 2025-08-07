@@ -45,13 +45,18 @@ local function patch(p)
 		bf:close()
 	end
 
-	for l in pf:lines() do
+	local n=pf:read("*l")
+	while n do
+		local l=n n=pf:read("*l")
 		local ls = l:sub(1, 1)
 		if ls == "+" then
 			if l:sub(2,4) == "++ " then
 				--TODO: Just ignore this line?
 			else
-				if of then of:write(l:sub(2) .. '\n') ol = ol + 1 end
+				if of then
+					local nl = n and n:match("^\\ No newline at end of file")
+					of:write(l:sub(2)..(nl and""or'\n')) ol = ol + 1
+				end
 			end
 		elseif ls == '-' then
 			if l:sub(2,4) == "-- " then
