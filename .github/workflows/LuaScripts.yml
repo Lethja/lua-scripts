@@ -1,3 +1,4 @@
+name: Lua Scripts
 on: push
 
 jobs:
