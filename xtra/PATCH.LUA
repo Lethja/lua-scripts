@@ -15,7 +15,8 @@ local function patch(p)
 		o,e=io.open(f,"w")if not o then return abort()end
 		b,e=io.open(f..".orig")if not b then return abort()end
 		if of then of:close()end if bf then bf:close()end of,ol,bf,bl,h=o,0,b,0,nil return true end
-	local function writeRemainder()if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()of,ol=nil,0 end bf:close()bf,bl,h=nil,0,nil end
+	local function writeRemainder()if h then if h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1)then print(M)os.exit(1)else print("patched")end end
+		if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()of,ol=nil,0 end bf:close()bf,bl,h=nil,0,nil end
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
 		if ls=='+'then
@@ -41,7 +42,7 @@ local function patch(p)
 				for _=1,s do
 					local ctx=bf:read("*l")if not ctx then print(M)os.exit(1)end
 					bl=bl+1 if of then of:write(ctx.."\n")ol=ol+1 end end end end end end
-	pf:close()if h then print("patched")end if bf then writeRemainder()end end
+	pf:close()if bf then writeRemainder()end end
 if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
 
 Patch a unified difference file]])os.exit(1)end patch(arg[1])
