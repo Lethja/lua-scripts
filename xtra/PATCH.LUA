@@ -1,11 +1,11 @@
 #!/usr/bin/env lua
 
-M="malformed"
+P,M="patched","malformed"
 local function patch(pf)
 	local ol,bl,cp,of,bf,h,e=0,0
-	local function parseFileName(l)local first=l:sub(5,5)
-		if first=='"'or first=="'"then return l:match(first.."([^"..first.."]+)"..first,5)
-		else local words={}for v in string.gmatch(l,"%S+")do table.insert(words,v)end return words[2]end end
+	local function parseFileName(l)local f=l:sub(5,5)
+		if f=='"'or f=="'"then return l:match(f.."([^"..f.."]+)"..f,5)
+		else f={}for v in string.gmatch(l,"%S+")do table.insert(f,v)end return f[2]end end
 	local function setPatchFile(f) --TODO: write patch to temporary file first
 		local o,b local function abort()print(e)if o then o:close()end if b then b:close()end return false end
 		o,e=io.open(f)if not o then return abort()end
@@ -14,27 +14,24 @@ local function patch(pf)
 		o,e=io.open(f,"w")if not o then return abort()end
 		b,e=io.open(f..".orig")if not b then return abort()end
 		if of then of:close()end if bf then bf:close()end of,ol,bf,bl,h=o,0,b,0,nil return true end
-	local function writeRemainder()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1))then print(M)os.exit(1)else print("patched")end end
+	local function writeRemainder()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
 		if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()of,ol=nil,0 end bf:close()bf,bl,h=nil,0,nil end
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
 		if ls=='+'then
-			if l:sub(2,4)=="++ "then--ignore
-			else if of then local nl=n and n:match("^\\ No newline at end of file")of:write(l:sub(2)..(nl and""or'\n'))ol=ol+1 end end
+			if l:sub(2,4)~="++ "then of:write(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))ol=ol+1 end
 		elseif ls=='-'then
-			if l:sub(2,4)=="-- "then local filename=parseFileName(l)if bf then writeRemainder()end
-				if setPatchFile(filename)then cp=filename print("\n'"..cp.."':")end
-			else local cmp=bf:read("*l")bl=bl+1 if cmp~=l:sub(2)then print(M)os.exit(1)end end
+			if l:sub(2,4)=="-- "then local fn=parseFileName(l)if bf then writeRemainder()end if setPatchFile(fn)then cp=fn print("\n'"..cp.."':")end
+			else bl=bl+1 if bf:read("*l")~=l:sub(2)then print(M)os.exit(1)end end
 		elseif ls==' 'then
-			if bf then local cmp,line=bf:read("*l"),l:sub(2)bl=bl+1 if cmp==line then if of then of:write(line..'\n')ol=ol+1 end else print(M)os.exit(1)end end
+			if bf then local c,i=bf:read("*l"),l:sub(2)bl=bl+1 if c==i then if of then of:write(i..'\n')ol=ol+1 end else print(M)os.exit(1)end end
 		elseif ls=='@'then if l:sub(2,3)=="@ "then
 			local function parseHunkHeader()
-				local function split(i,d)local r={}for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
-				local s,o,w=split(l," "),{},{}
-				if s[2]then o=split(s[2],",")end if s[3]then w=split(s[3],",")end
+				local function split(i,d)local r={}for m in(i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
+				local s,o,w=split(l," "),{},{}if s[2]then o=split(s[2],",")end if s[3]then w=split(s[3],",")end
 				if o[1]then o[1]=o[1]:sub(2)end if w[1]then w[1]=w[1]:sub(2)end
 				return{o={s=tonumber(o[1]),l=tonumber(o[2])or 1},n={s=tonumber(w[1]),l=tonumber(w[2])or 1}}end
-			if h then if h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1)then print(M)os.exit(1)else print("patched")end end
+			if h then if h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1)then print(M)os.exit(1)else print(P)end end
 			h=parseHunkHeader()if h then
 				io.write("\t@@ -"..h.o.s..","..h.o.l.." +"..h.n.s..","..h.n.l.." @@: ")
 				local s=h.o.s>0 and(h.o.s-1)-bl or 0 if s<0 then print(M)os.exit(1)end
@@ -45,4 +42,4 @@ local function patch(pf)
 if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
 
 Patch unified difference file(s)]])os.exit(1)end
-for _,a in ipairs(arg) do local f,e=io.open(a) if f then patch(f)f:close()else print(e)end end
+for _,a in ipairs(arg)do local f,e=io.open(a)if f then patch(f)f:close()else print(e)end end
