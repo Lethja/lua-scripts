@@ -19,15 +19,15 @@ local function patch(pf)
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
 		if ls=='+'then
-			if l:sub(2,4)=="++ " then--ignore
+			if l:sub(2,4)=="++ "then--ignore
 			else if of then local nl=n and n:match("^\\ No newline at end of file")of:write(l:sub(2)..(nl and""or'\n'))ol=ol+1 end end
 		elseif ls=='-'then
-			if l:sub(2,4)=="-- " then local filename=parseFileName(l)if bf then writeRemainder()end
+			if l:sub(2,4)=="-- "then local filename=parseFileName(l)if bf then writeRemainder()end
 				if setPatchFile(filename)then cp=filename print("\n'"..cp.."':")end
 			else local cmp=bf:read("*l")bl=bl+1 if cmp~=l:sub(2)then print(M)os.exit(1)end end
 		elseif ls==' 'then
 			if bf then local cmp,line=bf:read("*l"),l:sub(2)bl=bl+1 if cmp==line then if of then of:write(line..'\n')ol=ol+1 end else print(M)os.exit(1)end end
-		elseif ls=='@'then if l:sub(2,3)=="@ " then
+		elseif ls=='@'then if l:sub(2,3)=="@ "then
 			local function parseHunkHeader()
 				local function split(i,d)local r={}for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
 				local s,o,w=split(l," "),{},{}
