@@ -14,7 +14,7 @@ local function patch(pf)
 		o,e=io.open(f,"w")if not o then return abort()end
 		b,e=io.open(f..".orig")if not b then return abort()end
 		if of then of:close()end if bf then bf:close()end of,ol,bf,bl,h=o,0,b,0,nil return true end
-	local function writeRemainder()if h then if h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1)then print(M)os.exit(1)else print("patched")end end
+	local function writeRemainder()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1))then print(M)os.exit(1)else print("patched")end end
 		if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()of,ol=nil,0 end bf:close()bf,bl,h=nil,0,nil end
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
