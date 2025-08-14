@@ -30,10 +30,10 @@ local function patch(pf)
 		elseif ls=='@'then if l:sub(2,3)=="@ " then
 			local function parseHunkHeader()
 				local function split(i,d)local r={}for m in (i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
-				local words,o,n=split(l," "),{},{}
-				if words[2]then o=split(words[2],",")end if words[3]then n=split(words[3],",")end
-				if o[1]then o[1]=o[1]:sub(2)end if n[1]then n[1]=n[1]:sub(2)end
-				return{o={s=tonumber(o[1]),l=tonumber(o[2])or 1},n={s=tonumber(n[1]),l=tonumber(n[2])or 1}}end
+				local s,o,w=split(l," "),{},{}
+				if s[2]then o=split(s[2],",")end if s[3]then w=split(s[3],",")end
+				if o[1]then o[1]=o[1]:sub(2)end if w[1]then w[1]=w[1]:sub(2)end
+				return{o={s=tonumber(o[1]),l=tonumber(o[2])or 1},n={s=tonumber(w[1]),l=tonumber(w[2])or 1}}end
 			if h then if h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1)then print(M)os.exit(1)else print("patched")end end
 			h=parseHunkHeader()if h then
 				io.write("\t@@ -"..h.o.s..","..h.o.l.." +"..h.n.s..","..h.n.l.." @@: ")
