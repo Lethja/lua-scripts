@@ -6,7 +6,7 @@ local function patch(pf)
 	local function parseFileName(l)local first=l:sub(5,5)
 		if first=='"'or first=="'"then return l:match(first.."([^"..first.."]+)"..first,5)
 		else local words={}for v in string.gmatch(l,"%S+")do table.insert(words,v)end return words[2]end end
-	local function setPatchFile(f)
+	local function setPatchFile(f) --TODO: write patch to temporary file first
 		local o,b local function abort()print(e)if o then o:close()end if b then b:close()end return false end
 		o,e=io.open(f)if not o then return abort()end
 		b,e=io.open(f..".orig","w")if not b then return abort()end
