@@ -2,43 +2,43 @@
 
 P,M="patched","malformed"
 local function patch(pf)
-	local ol,bl,cp,of,bf,h,e=0,0
+	local wl,rl,cp,wf,rf,h,e=0,0
 	local function parseFileName(l)local f=l:sub(5,5)
 		if f=='"'or f=="'"then return l:match(f.."([^"..f.."]+)"..f,5)
 		else f={}for v in string.gmatch(l,"%S+")do table.insert(f,v)end return f[2]end end
 	local function setPatchFile(f) --TODO: write patch to temporary file first
-		local o,b local function abort()print(e)if o then o:close()end if b then b:close()end return false end
-		o,e=io.open(f)if not o then return abort()end
-		b,e=io.open(f..".orig","w")if not b then return abort()end
-		for m in o:lines()do b:write(m..'\n')end o:close()b:close()
-		o,e=io.open(f,"w")if not o then return abort()end
-		b,e=io.open(f..".orig")if not b then return abort()end
-		if of then of:close()end if bf then bf:close()end of,ol,bf,bl,h=o,0,b,0,nil return true end
-	local function writeRemainder()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
-		if of then local rest=bf:read("*l")while rest do of:write(rest..'\n')rest=bf:read("*l")end of:close()of,ol=nil,0 end bf:close()bf,bl,h=nil,0,nil end
+		local r,w local function abort()print(e)if r then r:close()end if w then w:close()end return false end
+		r,e=io.open(f)if not r then return abort()end
+		w,e=io.open(f..".orig","w")if not w then return abort()end
+		for m in r:lines()do w:write(m..'\n')end r:close()w:close()
+		w,e=io.open(f,"w")if not r then return abort()end
+		r,e=io.open(f..".orig")if not w then return abort()end
+		if wf then wf:close()end if rf then rf:close()end wf,wl,rf,rl,h=w,0,r,0,nil return true end
+	local function writeRemainder()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
+		if wf then local rest=rf:read("*l")while rest do wf:write(rest..'\n')rest=rf:read("*l")end wf:close()wf,wl=nil,0 end rf:close()rf,rl,h=nil,0,nil end
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
 		if ls=='+'then
-			if l:sub(2,4)~="++ "then of:write(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))ol=ol+1 end
+			if l:sub(2,4)~="++ "then wf:write(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))wl=wl+1 end
 		elseif ls=='-'then
-			if l:sub(2,4)=="-- "then local fn=parseFileName(l)if bf then writeRemainder()end if setPatchFile(fn)then cp=fn print("\n'"..cp.."':")end
-			else bl=bl+1 if bf:read("*l")~=l:sub(2)then print(M)os.exit(1)end end
+			if l:sub(2,4)=="-- "then local fn=parseFileName(l)if rf then writeRemainder()end if setPatchFile(fn)then cp=fn print("\n'"..cp.."':")end
+			else rl=rl+1 if rf:read("*l")~=l:sub(2)then print(M)os.exit(1)end end
 		elseif ls==' 'then
-			if bf then local c,i=bf:read("*l"),l:sub(2)bl=bl+1 if c==i then if of then of:write(i..'\n')ol=ol+1 end else print(M)os.exit(1)end end
+			if rf then local c,i=rf:read("*l"),l:sub(2)rl=rl+1 if c==i then if wf then wf:write(i..'\n')wl=wl+1 end else print(M)os.exit(1)end end
 		elseif ls=='@'then if l:sub(2,3)=="@ "then
 			local function parseHunkHeader()
 				local function split(i,d)local r={}for m in(i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
 				local s,o,w=split(l," "),{},{}if s[2]then o=split(s[2],",")end if s[3]then w=split(s[3],",")end
 				if o[1]then o[1]=o[1]:sub(2)end if w[1]then w[1]=w[1]:sub(2)end
 				return{o={s=tonumber(o[1]),l=tonumber(o[2])or 1},n={s=tonumber(w[1]),l=tonumber(w[2])or 1}}end
-			if h then if h.o.l~=bl-(h.o.s-1)or h.n.l~=ol-(h.n.s-1)then print(M)os.exit(1)else print(P)end end
+			if h then if h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1)then print(M)os.exit(1)else print(P)end end
 			h=parseHunkHeader()if h then
 				io.write("\t@@ -"..h.o.s..","..h.o.l.." +"..h.n.s..","..h.n.l.." @@: ")
-				local s=h.o.s>0 and(h.o.s-1)-bl or 0 if s<0 then print(M)os.exit(1)end
+				local s=h.o.s>0 and(h.o.s-1)-rl or 0 if s<0 then print(M)os.exit(1)end
 				for _=1,s do
-					local ctx=bf:read("*l")if not ctx then print(M)os.exit(1)end
-					bl=bl+1 if of then of:write(ctx.."\n")ol=ol+1 end end end end end end
-	if bf then writeRemainder()end end
+					local ctx=rf:read("*l")if not ctx then print(M)os.exit(1)end
+					rl=rl+1 if wf then wf:write(ctx.."\n")wl=wl+1 end end end end end end
+	if rf then writeRemainder()end end
 if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
 
 Patch unified difference file(s)]])os.exit(1)end
