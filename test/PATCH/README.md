@@ -29,21 +29,21 @@ It is a self-contained, single-pass Lua script with no external dependencies.
 
 - Extract the filename from a line like `--- "a.txt"` or `--- a.txt` end
 - Strips quoting (`"` or `'`) if present.
-- Otherwise splits on whitespace and takes the second token.
+- Otherwise, splits on whitespace and takes the second token.
 
 ### Preparing a File (`setPatchFile`)
 
 1. Open `f` for reading
 2. Copy its entire contents to `f.orig`
 3. Reopen `f` for writing (truncating it)
-4. Store both reader (`bf`) and writer (`of`) handles end
+4. Configures both reader (`rf`) and writer (`wf`) handles and lines (`rl`/`wl`)
 
 - On failure at any step, aborts cleanly and reports the I/O error.
 
 ### Writing Remaining Context (`writeRemainder`)
 
-After the last hunk of a file is applied, any lines remaining in the original (`bf`) are written unchanged to the new
-file (`of`).
+After the last hunk of a file is applied, any lines remaining in the original (`rf`) are written unchanged to the new
+file (`wf`).
 
 ### Diff-Line Dispatch
 
@@ -51,23 +51,23 @@ Each patch-file line is classified by its first character:
 
 #### Additions (`+`)
 
-- Lines beginning `+` (but not `++ `) are written to `of`.
+- Lines beginning `+` (but not `++ `) are written to `wf`.
 
 #### Deletions (`-`)
 
 - A leading `-- ` indicates a new filename header (`--- a.txt`).
-- Other `-` lines are verified against `bf:read("*l")`, then skipped (i.e. not written to `of`).
+- Other `-` lines are verified against `rf:read("*l")`, then skipped (i.e. not written to `wf`).
 
 #### Context (` `)
 
-- Lines beginning with a space must match the next line in `bf`.
-- If they do, they’re copied unchanged into `of`; otherwise the script errors out.
+- Lines beginning with a space must match the next line in `rf`.
+- If they do, they’re copied unchanged into `wf`; otherwise the script errors out.
 
 #### Hunk Headers (`@@`)
 
 - On seeing `@@ -oldStart,oldLen +newStart,newLen @@`, parse the four numbers.
 - Before entering the new hunk, verify you consumed exactly `oldLen` & `newLen` lines since the last header.
-- Skip any “leading context” between hunks by copying `(oldStart − 1) − bl` lines from `bf` → `of`.
+- Skip any “leading context” between hunks by copying `(oldStart − 1) − rl` lines from `rf` → `wf`.
 
 #### No-newline Marker (`\ No newline…`)
 
