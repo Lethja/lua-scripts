@@ -14,17 +14,19 @@ local function patch(pf)
 		w,e=io.open(f,"w")if not r then return abort()end
 		r,e=io.open(f..".orig")if not w then return abort()end
 		if wf then wf:close()end if rf then rf:close()end wf,wl,rf,rl,h=w,0,r,0,nil return true end
+	local function R()rl=rl+1 return rf:read("*l")end
+	local function W(s)wl=wl+1 return wf:write(s)end
 	local function writeRemainder()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
-		if wf then local rest=rf:read("*l")while rest do wf:write(rest..'\n')rest=rf:read("*l")end wf:close()wf,wl=nil,0 end rf:close()rf,rl,h=nil,0,nil end
+		if wf then local rest=R()while rest do W(rest..'\n')rest=R()end wf:close()wf,wl=nil,0 end rf:close()rf,rl,h=nil,0,nil end
 	local n=pf:read("*l")while n do
 		local l,ls=n n=pf:read("*l")ls=l:sub(1,1)
 		if ls=='+'then
-			if l:sub(2,4)~="++ "then wf:write(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))wl=wl+1 end
+			if l:sub(2,4)~="++ "then W(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))end
 		elseif ls=='-'then
 			if l:sub(2,4)=="-- "then local fn=parseFileName(l)if rf then writeRemainder()end if setPatchFile(fn)then cp=fn print("\n'"..cp.."':")end
-			else rl=rl+1 if rf:read("*l")~=l:sub(2)then print(M)os.exit(1)end end
+			elseif R()~=l:sub(2)then print(M)os.exit(1)end
 		elseif ls==' 'then
-			if rf then local c,i=rf:read("*l"),l:sub(2)rl=rl+1 if c==i then if wf then wf:write(i..'\n')wl=wl+1 end else print(M)os.exit(1)end end
+			if rf then local c,i=R(),l:sub(2)if c==i then if wf then W(i..'\n')end else print(M)os.exit(1)end end
 		elseif ls=='@'then if l:sub(2,3)=="@ "then
 			local function parseHunkHeader()
 				local function split(i,d)local r={}for m in(i..d):gmatch("(.-)"..d)do table.insert(r,m)end return r end
@@ -36,8 +38,8 @@ local function patch(pf)
 				io.write("\t@@ -"..h.o.s..","..h.o.l.." +"..h.n.s..","..h.n.l.." @@: ")
 				local s=h.o.s>0 and(h.o.s-1)-rl or 0 if s<0 then print(M)os.exit(1)end
 				for _=1,s do
-					local ctx=rf:read("*l")if not ctx then print(M)os.exit(1)end
-					rl=rl+1 if wf then wf:write(ctx.."\n")wl=wl+1 end end end end end end
+					local ctx=R()if not ctx then print(M)os.exit(1)end
+					if wf then W(ctx.."\n")end end end end end end
 	if rf then writeRemainder()end end
 if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
 
