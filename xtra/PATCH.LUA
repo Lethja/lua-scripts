@@ -16,8 +16,26 @@ local function patch(pf)
 		if wf then wf:close()end if rf then rf:close()end wf,wl,rf,rl,h=w,0,r,0,nil return true end
 	local function R()rl=rl+1 return rf:read("*l")end
 	local function W(s)wl=wl+1 return wf:write(s)end
-	local function WR()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
-		if wf then local r=R()while r do W(r..'\n')r=R()end wf:close()wf,wl=nil,0 end rf:close()rf,rl,h=nil,0,nil end --TODO: Write original to backup here
+	local function WR()
+		if h then
+			if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then
+				print(M)os.exit(1)
+			else
+				print(P)
+			end
+		end
+		if rf and wf then
+			local r=R()
+			while r do
+				W(r..'\n')r=R()
+			end
+			--TODO: Write original to a backup here if it differs from the backup
+			--TODO: reopen rf with write permissions and copy wf content to it
+			wf:close() --TODO: close and nil rf here to
+			wf,wl=nil,0
+		end
+		rf:close()rf,rl,h=nil,0,nil
+	end
 	local n=pf:read("*l")while n do local l,f=n n=pf:read("*l")f=l:sub(1,1)if f=='+'then
 			if l:sub(2,4)~="++ "then W(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))end
 		elseif f=='-'then
