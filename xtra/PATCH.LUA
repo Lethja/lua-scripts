@@ -11,7 +11,7 @@ local function patch(pf)
 	local function RW(x)x:seek("set",0)end
 	local function CF(a,b)local l,t,s=0,a:seek("end")RW(a)s=a:read("*l")repeat b:write(s..(l+#s<t and"\n"or""))l=l+#s s=a:read("*l")until not s end
 	local function W(s)wl=wl+1 return wf:write(s)end
-	local function WR()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
+	local function EPF()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
 		if rf and wf then local r,f,l=R()while r do W(r..'\n')r=R()end
 			local function B()local n=cp:match("(.*)%.[^%.]*")..".bak"f=io.open(n,"a+")
 				local function C()RW(f)RW(rf)repeat r,l=R(),rf:read("*l")if r~=l then return 1 end until not r or not l end
@@ -21,7 +21,7 @@ local function patch(pf)
 	local n=pf:read("*l")while n do local l,f=n n=pf:read("*l")f=l:sub(1,1)if f=='+'then
 			if l:sub(2,4)~="++ "then W(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))end
 		elseif f=='-'then
-			if l:sub(2,4)=="-- "then local fn=PFN(l)if rf then WR()end if SPF(fn)then print("\t"..fn..":")cp=fn end
+			if l:sub(2,4)=="-- "then local fn=PFN(l)if rf then EPF()end if SPF(fn)then print("\t"..fn..":")cp=fn end
 			elseif R()~=l:sub(2)then print(M)os.exit(1)end
 		elseif f==' 'then
 			if rf then local c,i=R(),l:sub(2)if c==i then if wf then W(i..'\n')end else print(M)os.exit(1)end end
@@ -35,7 +35,7 @@ local function patch(pf)
 				for _=1,s do
 					local r=R()if not r then print(M)os.exit(1)end
 					if wf then W(r.."\n")end end end end end end
-	if rf then WR()end end
+	if rf then EPF()end end
 if #arg<1 then print(arg[-1].." "..arg[0]..[[ diff...
 
 Patch unified difference file(s)]])os.exit(1)end
