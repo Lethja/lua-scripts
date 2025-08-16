@@ -9,13 +9,14 @@ local function patch(pf)
 	local function SPF(f)rl,wl=0,0 rf,e=io.open(f)wf,e=io.tmpfile()if e then print("\t"..e)rf,wf=nil,nil end return not e end
 	local function R()rl=rl+1 return rf:read("*l")end
 	local function RW(x)x:seek("set",0)end
+	local function CF(a,b)local l,t,s=0,a:seek("end")RW(a)s=a:read("*l")repeat b:write(s..(l+#s<t and"\n"or""))l=l+#s s=a:read("*l")until not s end
 	local function W(s)wl=wl+1 return wf:write(s)end
 	local function WR()if h then if(h.o.l>0 and h.o.s>0)and(h.o.l~=rl-(h.o.s-1)or h.n.l~=wl-(h.n.s-1))then print(M)os.exit(1)else print(P)end end
 		if rf and wf then local r,f,l=R()while r do W(r..'\n')r=R()end
 			local function B()local n=cp:match("(.*)%.[^%.]*")..".bak"f=io.open(n,"a+")
 				local function C()RW(f)RW(rf)repeat r,l=R(),rf:read("*l")if r~=l then return 1 end until not r or not l end
-				if f:seek()~=rf:seek()or C()then RW(rf)f:close()f=assert(io.open(n,"w"))r=R()repeat f:write(r..'\n')r=R()until not r end end
-			B()rf:close()rf=assert(io.open(cp,"w"))f,l=0,wf:seek("end")RW(wf)r=wf:read("*l")repeat rf:write(r..(f+#r<l and"\n"or""))f=f+#r r=wf:read("*l")until not r wf:close()wf,wl=nil,0 end
+				if f:seek()~=rf:seek()or C()then f:close()f=assert(io.open(n,"w"))CF(rf,f)end end
+			B()rf:close()rf=assert(io.open(cp,"w"))CF(wf,rf)wf:close()wf,wl=nil,0 end
 		rf:close()rf,rl,h=nil,0,nil end
 	local n=pf:read("*l")while n do local l,f=n n=pf:read("*l")f=l:sub(1,1)if f=='+'then
 			if l:sub(2,4)~="++ "then W(l:sub(2)..(n and n:match("^\\ No newline at end of file")and""or'\n'))end
