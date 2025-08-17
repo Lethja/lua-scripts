@@ -134,7 +134,17 @@ local function Squish(fileName)
             data = data .. sep .. token.value
         end
     end
-    print(data)
+
+    f, e = io.open(fileName, "w")
+    if not f then
+        print(e)
+        return
+    end
+
+    f:write(data)
+    f:close()
+
+    print(fileName .. ":\t" .. beforeSize .. "->" .. #data)
 end
 
 if #arg < 1 then
