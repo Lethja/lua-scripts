@@ -142,9 +142,10 @@ local function Squish(fileName)
     end
 
     f:write(data)
-    f:close()
 
-    print(fileName .. ":\t" .. beforeSize .. "->" .. #data)
+    -- Print the size of the file in bytes before and after the squish
+    print(string.format("%9d -> %9d:\t %s", beforeSize, f:seek(), fileName))
+    f:close()
 end
 
 if #arg < 1 then
