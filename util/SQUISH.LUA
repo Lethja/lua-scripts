@@ -137,4 +137,12 @@ local function Squish(fileName)
     print(data)
 end
 
+if #arg < 1 then
+    print(arg[0],[[[LUA SCRIPT...]
+
+Removes comments, lines and whitespace from Lua scripts to save disk space.
+Always backup any script before running it with ]] .. arg[0])
+    os.exit(1)
+end
+
 for _,v in ipairs(arg) do Squish(v) end
