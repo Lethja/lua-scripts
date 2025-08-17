@@ -123,7 +123,7 @@ local function Squish(fileName)
         for _, token in ipairs(tokens) do
             if token.type == "code" then
                 token.value = token.value:gsub("%s+", " ")  -- Replace multiple spaces with a single space
-                token.value = token.value:gsub("%s*([%(%){},;=%+%-%*/%^])%s*", "%1")  -- Remove spaces around operators and punctuation
+                token.value = token.value:gsub("%s*([%(%){}<>.,;=%+%-%*/%^])%s*", "%1")  -- Remove spaces around operators and punctuation
                 token.value = token.value:gsub("^%s+", "")  -- Remove leading whitespace
                 token.value = token.value:gsub("%s+$", "")  -- Remove trailing whitespace
             end
@@ -142,7 +142,18 @@ local function Squish(fileName)
 
     -- Concatenate data together
     for _, token in ipairs(tokens) do
-        if token.type ~= "comment" then data = data .. token.value end
+        if token.type ~= "comment" then
+            local function pad()
+                local last, start = #data > 1 and data:sub(-1, -1), #token.value > 1 and token.value:sub(1, 1)
+                if (last and (last:find("%a") or last:find("%d")))
+                and (start and (start:find("%a") or start:find("%d"))) then
+                    return " "
+                end
+                return ""
+            end
+            local sep = pad()
+            data = data .. sep .. token.value
+        end
     end
     print(data)
 end
