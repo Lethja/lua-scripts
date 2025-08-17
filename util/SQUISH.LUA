@@ -40,12 +40,12 @@ local function Squish(fileName)
                     pos = lineEnd
                 end
 
-            -- Handle strings with double quotes
-            elseif c == '"' then
+            -- Handle quoted strings
+            elseif c == '"' or c == "'" then
                 local stringStart = pos
                 pos = pos + 1
                 while pos <= #data do
-                    if data:sub(pos, pos) == '"' and data:sub(pos - 1, pos - 1) ~= "\\" then
+                    if data:sub(pos, pos) == c then
                         break
                     elseif data:sub(pos, pos) == "\\" and pos < #data then
                         pos = pos + 2  -- Skip escaped character
@@ -61,28 +61,7 @@ local function Squish(fileName)
                     table.insert(tokens, {type = "code", value = data:sub(stringStart, pos - 1)})
                 end
 
-            -- Handle strings with single quotes
-            elseif c == "'" then
-                local stringStart = pos
-                pos = pos + 1
-                while pos <= #data do
-                    if data:sub(pos, pos) == "'" and data:sub(pos - 1, pos - 1) ~= "\\" then
-                        break
-                    elseif data:sub(pos, pos) == "\\" and pos < #data then
-                        pos = pos + 2  -- Skip escaped character
-                    else
-                        pos = pos + 1
-                    end
-                end
-                if pos <= #data then
-                    table.insert(tokens, {type = "string", value = data:sub(stringStart, pos)})
-                    pos = pos + 1
-                else
-                    -- Unclosed string, treat as code (this is an error in Lua)
-                    table.insert(tokens, {type = "code", value = data:sub(stringStart, pos - 1)})
-                end
-
-            -- Handle long bracket strings
+            -- Handle bracket strings
             elseif c == "[" and data:sub(pos, pos + 1):match("%[=*%[") then
                 local stringStart = pos
                 local openBracket = data:match("%[=*%[", pos)
