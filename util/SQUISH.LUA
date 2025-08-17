@@ -102,7 +102,7 @@ local function Squish(fileName)
         for _, token in ipairs(tokens) do
             if token.type == "code" then
                 token.value = token.value:gsub("%s+", " ")  -- Replace multiple spaces with a single space
-                token.value = token.value:gsub("%s*([%(%){}<>.,;=%+%-%*/%^])%s*", "%1")  -- Remove spaces around operators and punctuation
+                token.value = token.value:gsub("%s*([%(%){}<>.,:;=%+%-%*/%^])%s*", "%1")  -- Remove spaces around operators and punctuation
                 token.value = token.value:gsub("^%s+", "")  -- Remove leading whitespace
                 token.value = token.value:gsub("%s+$", "")  -- Remove trailing whitespace
             end
