@@ -32,3 +32,26 @@ jobs:
 
             cd $WD
           done
+
+      - name: Squish all scripts
+        run: |
+          find . -name "*.LUA" -type f -exec util/SQUISH.LUA {} +
+
+      - name: Run unit tests again on squished versions of script
+        run: |
+          set -e
+          WD=$(pwd)
+          TEST=$(find test -name test.sh -executable -print)
+          for file in $TEST; do
+            echo
+            echo "### Running $file ###"
+            echo
+            cd $(dirname $file)
+            if ! ./$(basename "$file"); then
+              echo "Error: Script $file failed!"
+              cd "$WD"
+              exit 1
+            fi
+  
+            cd $WD
+          done
