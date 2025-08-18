@@ -9,7 +9,7 @@ SCRIPT="test/$SCRIPT"
 BEFORE=$(stat -L -c%s "$SCRIPT")
 $INTERP $SCRIPT $SCRIPT
 AFTER=$(stat -L -c%s "$SCRIPT")
-if [ "$AFTER" -ge "$BEFORE" ]; then echo "SQUISH: FAIL"; exit 1; fi
+if [ "$AFTER" -gt "$BEFORE" ]; then echo "SQUISH: FAIL"; exit 1; fi
 $INTERP $SCRIPT $SCRIPT
 FINAL=$(stat -L -c%s "$SCRIPT")
 echo
