@@ -1,5 +1,8 @@
 #!/usr/bin/env lua
 
+---Remove whitespace, comments and newlines from a Lua script.
+---The file is squished in place so make a backup before running.
+---@param fileName string The path to the Lua file to squish.
 local function Squish(fileName)
     local f, e = io.open(fileName, "r")
 
@@ -8,6 +11,11 @@ local function Squish(fileName)
         return
     end
 
+    ---Read a Lua script and create a tokenized list splitting the codebase into 1 of 4 categories:
+    ---code, comment, shebang and string
+    ---By doing this first it becomes easier to parse the codebase correctly later
+    ---@param file file The open file with it's pointer set at the start
+    ---@return table A list of the tokenized sections ready for further parsing
     local function tokenizeFile(file)
         local data, tokens, pos = file:read("all"), {}, 1
 
@@ -94,13 +102,15 @@ local function Squish(fileName)
         return tokens
     end
 
+    ---Remove whitespace from code tokens when it is not required by an interpreter
+    ---@param tokens table The tokenized list to process
     local function removeWhiteSpace(tokens)
         for _, token in ipairs(tokens) do
             if token.type == "code" then
-                token.value = token.value:gsub("%s+", " ")  -- Replace multiple spaces with a single space
-                token.value = token.value:gsub("%s*([%(%){}<>.,:;=%+%-%*/%^])%s*", "%1")  -- Remove spaces around operators and punctuation
-                token.value = token.value:gsub("^%s+", "")  -- Remove leading whitespace
-                token.value = token.value:gsub("%s+$", "")  -- Remove trailing whitespace
+                token.value = token.value:gsub("%s+", " ")                                  -- Replace multiple spaces with a single space
+                token.value = token.value:gsub("%s*([%(%){}<>.,:;=%+%-%*/%^])%s*", "%1")    -- Remove spaces around operators and punctuation
+                token.value = token.value:gsub("^%s+", "")                                  -- Remove leading whitespace
+                token.value = token.value:gsub("%s+$", "")                                  -- Remove trailing whitespace
             end
         end
     end
@@ -117,6 +127,8 @@ local function Squish(fileName)
 
     for _, token in ipairs(tokens) do -- Drop comments and concatenate code and strings back together
         if token.type ~= "comment" then
+            ---Determine and add a space between tokens if required
+            ---@return string The string that should be concatenated before the new token is written
             local function pad()
                 local last, start = #data > 1 and data:sub(-1, -1), #token.value > 1 and token.value:sub(1, 1)
                 local function needsPadding(x) return x and (x:find("%a") or x:find("%d")) end
@@ -127,15 +139,16 @@ local function Squish(fileName)
             end
             local sep = pad()
             data = data .. sep .. token.value
-        else
+        else -- token.type == "comment"
             local pragma = token.value:match("^--%s*%#%s*squish%s+([%w%-]+)")
 
-            if pragma == "keep-eol" then
+            if pragma == "keep-eol" then -- Add a new line in place of this comment
                 data = data .. '\n'
             end
         end
     end
 
+    -- Overwrite the file initially read from with the squished version
     f, e = io.open(fileName, "w")
     if not f then
         print(e)
