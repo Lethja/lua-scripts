@@ -30,6 +30,6 @@ local function init()SINE={}for i=1,64 do SINE[i]=math.floor(2^32*math.abs(math.
 
 if LIB then init()return end
 if #arg<1 then print((arg[-1] or "?").." "..(arg[0] or "?").." [FILE]...")os.exit(1)
-else init()for i=1,#arg do local f,e=io.open(arg[i],"rb")
+else init()for i=1,#arg do local f,e=io.open(arg[i],"rb") --#squish keep-eol
 	if f then local sum=md5_file(f)f:close()if sum then print(sum.."  "..arg[i])else print(arg[i]..": ".."Unknown error")os.exit(-1)end
-	else print(e)os.exit(1)end end end
+	else print(e)os.exit(1)end end end --#squish keep-eol
