@@ -127,6 +127,12 @@ local function Squish(fileName)
             end
             local sep = pad()
             data = data .. sep .. token.value
+        else
+            local pragma = token.value:match("^--%s*%#%s*squish%s+([%w%-]+)")
+
+            if pragma == "keep-eol" then
+                data = data .. '\n'
+            end
         end
     end
 
