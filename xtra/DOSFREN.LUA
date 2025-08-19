@@ -16,19 +16,25 @@ is present. When this occurs, the line will instead write LFCRLF so that
 both system families can pleasantly read and run the file.
 ]]
 
-if #arg < 1 then
-	print(arg[-1] .. " " .. arg[0] .. " [FILE]..." .. '\n\n' .. H)
-	os.exit(1)
+if #arg < 1 then -- Show help when no arguments are given
+    print(arg[-1] .. " " .. arg[0] .. " [FILE]..." .. '\n\n' .. H)
+    os.exit(1)
 end
 
-CR = string.char(0x0D)
-LF = string.char(0x0A)
+CR = string.char(0x0D) -- '\r'
+LF = string.char(0x0A) -- '\n'
 CRLF = CR .. LF
 
+---Strip all newlines from a string
+---@param str string The strip to strip lines from
+---@return string The stripped string
 local function StripCarriage(str)
-	return str:gsub("[" .. CR .. LF .. "]", "")
+    return str:gsub("[" .. CR .. LF .. "]", "")
 end
 
+---Handle unique UNIX shebang case
+---@param inFile file The file to check for a shebang in
+---@return string|nil The line to add when a shebang has been found otherwise nil
 local function Shebang(inFile)
 	inFile:seek("set", 0)
 	local l = inFile:read("*l")
@@ -44,6 +50,8 @@ local function Shebang(inFile)
 	return nil
 end
 
+---Create a temporary file
+---@param m string The mode to open the temporary file in
 local function TmpFile(m)
 	for i = 1, 10000 do
 		local t = tostring(os.time() + i):sub(-8)
@@ -54,9 +62,11 @@ local function TmpFile(m)
 	end
 end
 
-for j = 1, #arg do
+for j = 1, #arg do -- Convert each file to CRLF newlines
 	local i, e = io.open(arg[j])
-	if not i then print(arg[j] .. ": " .. e) else
+	if not i then
+		print(arg[j] .. ": " .. e)
+	else
 		local o, t
 		o, e, t = TmpFile("wb")
 		if not o then
@@ -90,7 +100,8 @@ for j = 1, #arg do
 					end
 					o:write(d)
 				end
-				i:close() o:close()
+				i:close()
+				o:close()
 			end
 			os.remove(t)
 		end
