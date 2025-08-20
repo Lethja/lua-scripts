@@ -131,39 +131,38 @@ print("Maximum Int:", math.maxinteger or "Unknown")
 
 --Check what benchmark to run
 M = tonumber(arg[1])
-if not M or M < 1980 then
-    print("\nTo benchmark,run again and specify a year > 1979")
-    os.exit()
+if M and M > 1979 then
+	print("\nRunning benchmark: " .. M)
+
+	--Make the benchmark do more iterations of every test for each year above 1980
+	M = (M - 1955) / 25
+	B, S = math.floor(500 ^ M), math.floor(100 ^ M)
+
+	print("\nBenchmark", "Iterations", "Time (min:sec.ms)")
+	L()
+	--Benchmark Start
+	b = os.clock()
+	b_add()
+	b_flt()
+	b_sub()
+	b_mul()
+	b_div()
+	b_pi()
+	b_gcd()
+	b_arr()
+
+	--Run extended benchmarks if available
+	LIB = true
+	package.path = package.path .. ";?.LUA" --In case of a case sensitive operating system
+	pcall(require, "EXBENCH")
+
+	--Benchmark Finish
+	L()
+	io.write("Total:\t\t" .. string.format("%8.3fkB", collectgarbage("count")) .. "\t")
+	BE(b)
+else
+	print("\nTo benchmark, run again and specify a year > 1979")
 end
-
-print("\nRunning benchmark: " .. M)
-
---Make the benchmark do more iterations of every test for each year above 1980
-M = (M - 1955) / 25
-B, S = math.floor(500 ^ M), math.floor(100 ^ M)
-
-print("\nBenchmark", "Iterations", "Time (min:sec.ms)")
-L()
---Benchmark Start
-b = os.clock()
-b_add()
-b_flt()
-b_sub()
-b_mul()
-b_div()
-b_pi()
-b_gcd()
-b_arr()
-
---Run extended benchmarks if available
-LIB = true
-package.path = package.path .. ";?.LUA" --In case of a case sensitive operating system
-pcall(require, "EXBENCH")
-
---Benchmark Finish
-L()
-io.write("Total:\t\t" .. string.format("%8.3fkB", collectgarbage("count")) .. "\t")
-BE(b)
 
 --Wait for user input so the benchmark results can be read on operating systems that would automatically close the window
 print("Press Enter to Exit...")
