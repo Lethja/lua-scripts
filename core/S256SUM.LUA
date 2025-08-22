@@ -140,18 +140,14 @@ function sha256_file(file)
 		TF(c, H)
 	end
 
-	local function h(x)
-		return string.format("%08x", x)
-	end
-
 	-- l = Final hash string
-	l = {}
+	l = ""
 
 	for _, v in ipairs(H) do
-		table.insert(l, h(v))
+		l = l .. string.format("%08x", v)
 	end
 
-	return table.concat(l)
+	return l
 end
 
 if LIB then
