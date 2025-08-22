@@ -96,7 +96,11 @@ function sha256_file(file)
     local function h(x)
         return string.format("%08x", x)
     end
-    return table.concat({ h(H[1]), h(H[2]), h(H[3]), h(H[4]), h(H[5]), h(H[6]), h(H[7]), h(H[8]) }) --#squish keep-eol
+    l = {}
+    for _, v in ipairs(H) do
+        table.insert(l, h(v))
+    end
+    return table.concat(l) --#squish keep-eol
 end
 
 if LIB then
