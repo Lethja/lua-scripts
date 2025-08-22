@@ -38,12 +38,12 @@ function sha256_file(file)
             W[i] = string.byte(k, o) << 24 | string.byte(k, o + 1) << 16 | string.byte(k, o + 2) << 8 | string.byte(k, o + 3)
         end
         for i = 16, 63 do -- Message expansion
-            local s0, s1 = RR(W[i - 15], 7) ~ RR(W[i - 15], 18) ~ (W[i - 15] >> 3), RR(W[i - 2], 17) ~ RR(W[i - 2], 19) ~ (W[i - 2] >> 10) --#squish keep-eol
+            local s0, s1 = RR(W[i - 15], 7) ~ RR(W[i - 15], 18) ~ (W[i - 15] >> 3), RR(W[i - 2], 17) ~ RR(W[i - 2], 19) ~ (W[i - 2] >> 10)
             W[i] = (W[i - 16] + s0 + W[i - 7] + s1) & M
         end
         local a, b, c, d, e, f, g, h = table.unpack(H)
         for i = 0, 63 do
-            local S0, S1, ch, maj = RR(a, 2) ~ RR(a, 13) ~ RR(a, 22), RR(e, 6) ~ RR(e, 11) ~ RR(e, 25), (e & f) ~ ((~e) & g), (a & b) ~ (a & c) ~ (b & c) --#squish keep-eol
+            local S0, S1, ch, maj = RR(a, 2) ~ RR(a, 13) ~ RR(a, 22), RR(e, 6) ~ RR(e, 11) ~ RR(e, 25), (e & f) ~ ((~e) & g), (a & b) ~ (a & c) ~ (b & c)
             local t1, t2 = (h + S1 + ch + K[i + 1] + W[i]) & M, (S0 + maj) & M
             h = g
             g = f
@@ -68,11 +68,11 @@ function sha256_file(file)
     ---@param l number The length of the message in bytes
     ---@return string The padding string to append to the message
     local function P(l)
-        local ml, p, pl = l * 8, "\128", 56 - (l % 64) --#squish keep-eol
+        local ml, p, pl = l * 8, "\128", 56 - (l % 64)
         if pl <= 0 then
             pl = pl + 64
         end
-        p = p .. string.rep("\0", pl - 1) --#squish keep-eol
+        p = p .. string.rep("\0", pl - 1)
         for i = 7, 0, -1 do
             p = p .. string.char((ml >> (i * 8)) & 0xFF)
         end
@@ -100,7 +100,7 @@ function sha256_file(file)
     for _, v in ipairs(H) do
         table.insert(l, h(v))
     end
-    return table.concat(l) --#squish keep-eol
+    return table.concat(l)
 end
 
 if LIB then
@@ -109,16 +109,16 @@ end
 
 if #arg < 1 then
     print((arg[-1] or "?") .. " " .. (arg[0] or "?") .. " [FILE]...")
-    os.exit(1) --#squish keep-eol
+    os.exit(1)
 else
     for i = 1, #arg do
-        local f, e = io.open(arg[i], "rb") --#squish keep-eol
+        local f, e = io.open(arg[i], "rb")
         if not f then
             print(e)
             os.exit(1)
         end
         local sum = sha256_file(f)
-        f:close() --#squish keep-eol
+        f:close()
         if sum then
             print(sum .. "  " .. arg[i])
         else
