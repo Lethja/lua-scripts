@@ -44,6 +44,7 @@ function sha256_file(file)
 
 			W[i] = string.byte(k, o) << 24 | string.byte(k, o + 1) << 16 | string.byte(k, o + 2) << 8 | string.byte(k, o + 3)
 		end
+
 		for i = 16, 63 do -- Message expansion
 
 			-- s0 = Message schedule shift 0
