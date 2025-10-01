@@ -17,8 +17,8 @@ both system families can pleasantly read and run the file.
 ]]
 
 if #arg < 1 then -- Show help when no arguments are given
-    print(arg[-1] .. " " .. arg[0] .. " [FILE]..." .. '\n\n' .. H)
-    os.exit(1)
+	print(arg[-1] .. " " .. arg[0] .. " [FILE]..." .. '\n\n' .. H)
+	os.exit(1)
 end
 
 CR = string.char(0x0D) -- '\r'
@@ -29,7 +29,7 @@ CRLF = CR .. LF
 ---@param str string The strip to strip lines from
 ---@return string The stripped string
 local function StripCarriage(str)
-    return str:gsub("[" .. CR .. LF .. "]", "")
+	return str:gsub("[" .. CR .. LF .. "]", "")
 end
 
 ---Handle unique UNIX shebang case

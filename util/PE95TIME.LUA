@@ -129,13 +129,13 @@ end
 ---@param l number Current directory level
 ---@param v boolean Whether to modify timestamps
 function A(o, l, v)
-	
+
 	-- d = position of timestamp field in current resource directory
 	-- n = number of named entities
 	-- t = total entity count
 	-- e = entry start offset
 	local d, n, i, t, e = K + o + 4
-	
+
 	W(d, V) -- Set timestamp to Windows 95 date
 	C(4)
 	n, i = R(2), R(2) -- Named entries count, ID entries count
