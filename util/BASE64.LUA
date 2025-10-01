@@ -1,3 +1,4 @@
+#!/usr/bin/env lua
 
 -- b64c = base64 characters
 --   dt = decode table
@@ -110,10 +111,9 @@ function base64_decode_file(file)
 end
 
 if #arg < 1 or #arg > 2 then
-    print([[Usage: lua base64.lua [-e|-d] [file]
-  -e: encode (default)
-  -d: decode")
-  file: input file (default: stdin)]])
+    print(arg[0] .. [[ [-e|-d] [file]
+    -e: encode (default)
+    -d: decode"]])
     os.exit(1)
 end
 
