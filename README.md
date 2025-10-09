@@ -12,10 +12,11 @@ Most scripts have a unit test to make sure they work as intended.
 
 The scripts are split into the following folders:
 
-| Folder Name      | Description                                                                                                              |
-|------------------|--------------------------------------------------------------------------------------------------------------------------|
-| [bench](./bench) | Contains symbolic links to each script that is needed to run every benchmark in `BENCH.LUA`                              |
-| [core](./core)   | Scripts that go in all distributions of Lua for Watcom, namely included in the 160K floppy disk image for really old PCs |
-| [test](./test)   | Unit tests                                                                                                               |
-| [util](./util)   | Scripts that help with the build process of Lua for Watcom but aren't included on any disk                               | 
-| [xtra](./xtra)   | Extra scripts that are omitted from the 160K floppy disk image duo to space constants                                    |
+| Folder Name      | Description                                                                                                                |
+|------------------|----------------------------------------------------------------------------------------------------------------------------|
+| [dev](./dev)     | Scripts focused on software development an maintenance                                                                     |
+| [edu](./edu)     | Simple scripts intended for those learning how to write Lua                                                                |
+| [games](./games) | Simple text based games                                                                                                    |
+| [lib](./lib)     | Scripts pulled in by require and not intended to be executed directly                                                      |                                                                              |
+| [meta](./meta)   | Symbolic links to scripts that are structured in a way that defines a purpose such as a benchmark, unit test or disk image |
+| [util](./util)   | Utility scripts that perform a common system task such as file integrity or converting line endings in a text file         |

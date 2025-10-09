@@ -18,7 +18,7 @@ jobs:
         run: |
           set -e
           WD=$(pwd)
-          TEST=$(find test -name test.sh -executable -print)
+          TEST=$(find meta/test -name test.sh -executable -print)
           for file in $TEST; do
             echo
             echo "### Running $file ###"
@@ -41,7 +41,7 @@ jobs:
         run: |
           set -e
           WD=$(pwd)
-          TEST=$(find test -name test.sh -executable -print)
+          TEST=$(find meta/test -name test.sh -executable -print)
           for file in $TEST; do
             echo
             echo "### Running $file ###"
