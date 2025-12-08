@@ -1,25 +1,19 @@
 
 
-local function bxor(a,b) return a ~ b end
-local function band(a,b) return a & b end
-local function bor(a,b) return a | b end
-local function lshift(a,b) return a << b end
-local function rshift(a,b) return a >> b end
-
 local function newbitstream(data)
     local pos, bitbuf, bitcnt = 1, 0, 0
     local function needbits(n)
         while bitcnt < n do
             local b = data:byte(pos) or 0
             pos = pos + 1
-            bitbuf = bitbuf + lshift(b, bitcnt)
+            bitbuf = bitbuf + (b << bitcnt)
             bitcnt = bitcnt + 8
         end
     end
     local function readbits(n)
         needbits(n)
-        local v = band(bitbuf, (1 << n) - 1)
-        bitbuf = rshift(bitbuf, n)
+        local v = bitbuf & ((1 << n) - 1)
+        bitbuf = (bitbuf >> n)
         bitcnt = bitcnt - n
         return v
     end
@@ -31,7 +25,7 @@ end
 
 local function revbits(x, bits)
     local y = 0
-    for i = 1, bits do
+    for _ = 1, bits do
         y = (y << 1) | (x & 1)
         x = x >> 1
     end
@@ -70,7 +64,7 @@ local function read_huff(bs, h)
     local code = 0
     for len = 1, h.max do
         code = code | (bs.readbits(1) << (len - 1))
-        local masked = band(code, (1 << len) - 1)
+        local masked = code & ((1 << len) - 1)
         local e = h.tab[masked]
         if e and e.len == len then return e.sym end
     end
@@ -103,10 +97,9 @@ local function inflate(data)
             bs.align()
             local p = bs.pos()
             local function le16(s, i)
-                local a,b = s:byte(i,i+1); return a + b*256
+                local a,b = s:byte(i,i+1) return a + b*256
             end
-            local len = le16(data, p)
-            local nlen = le16(data, p + 2)
+            local len, _ = le16(data, p), le16(data, p + 2)
             bs.skip(4) -- consume LEN and NLEN
             local s = data:sub(bs.pos(), bs.pos() + len - 1)
             append_str(s)
@@ -198,8 +191,7 @@ local function inflate(data)
                     local base_index = outpos - distval
                     for i = 1, length do
                         -- copy byte-by-byte (handles overlaps correctly)
-                        local bytechar = out[base_index + i]
-                        append_byte(bytechar:byte())
+                        append_byte(out[base_index + i]:byte())
                     end
                 end
             end
@@ -216,14 +208,12 @@ end
 local function crc32(s)
     local crc = 0xFFFFFFFF
     for i = 1, #s do
-        local b = s:byte(i)
-        crc = bxor(crc, b)
+        crc = crc ~ s:byte(i)
         for _ = 1, 8 do
-            local mask = -(crc & 1)
-            crc = bxor(rshift(crc,1), band(0xEDB88320, mask))
+            crc = (crc >> 1) ~ (0xEDB88320 & (-(crc & 1)))
         end
     end
-    return bxor(crc, 0xFFFFFFFF)
+    return crc ~ 0xFFFFFFFF
 end
 
 local function le16(s, i) local a,b = s:byte(i,i+1); return a + b*256 end
@@ -238,8 +228,8 @@ local function unzip(path)
     local pos = 1
     while true do
         if data:sub(pos, pos+3) ~= "PK\3\4" then break end
-        local version_needed = le16(data, pos+4)
-        local flags = le16(data, pos+6)
+        local _ = le16(data, pos+4)
+        local _ = le16(data, pos+6)
         local cm = le16(data, pos+8)
         local crc_expected = le32(data, pos+14)
         local comp_size = le32(data, pos+18)
