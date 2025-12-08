@@ -1,26 +1,23 @@
-
+#!/usr/bin/env lua
 
 local function newbitstream(data)
     local pos, bitbuf, bitcnt = 1, 0, 0
     local function needbits(n)
         while bitcnt < n do
-            local b = data:byte(pos) or 0
+            bitbuf = bitbuf + ((data:byte(pos) or 0) << bitcnt)
             pos = pos + 1
-            bitbuf = bitbuf + (b << bitcnt)
             bitcnt = bitcnt + 8
         end
     end
     local function readbits(n)
         needbits(n)
         local v = bitbuf & ((1 << n) - 1)
-        bitbuf = (bitbuf >> n)
-        bitcnt = bitcnt - n
+        bitbuf, bitcnt = (bitbuf >> n), bitcnt - n
         return v
     end
     local function alignbyte() bitbuf, bitcnt = 0, 0 end
-    local function getpos() return pos end
     local function skip(n) pos = pos + n end
-    return { readbits = readbits, align = alignbyte, pos = getpos, skip = skip }
+    return { readbits = readbits, align = alignbyte, pos = pos, skip = skip }
 end
 
 local function revbits(x, bits)
@@ -33,48 +30,57 @@ local function revbits(x, bits)
 end
 
 local function make_huff(lengths)
-    local maxlen, counts = 0, {}
+
+    -- m = maximum length
+    -- c = counts
+    -- o = code
+    -- n = next code
+    -- t = tab
+    local m, c, o, n, t = 0, {}, 0, {}, {}
+
     for _, len in ipairs(lengths) do
         if len > 0 then
-            counts[len] = (counts[len] or 0) + 1
-            if len > maxlen then maxlen = len end
+            c[len] = (c[len] or 0) + 1
+            if len > m then m = len end
         end
     end
 
-    local code = 0
-    local next_code = {}
-    for bits = 1, maxlen do
-        code = (code + (counts[bits - 1] or 0)) << 1
-        next_code[bits] = code
+    -- b = bits
+    for b = 1, m do
+        o = (o + (c[b - 1] or 0)) << 1
+        n[b] = o
     end
 
-    local tab = {}
-    for sym, len in ipairs(lengths) do
-        if len > 0 then
-            local c = revbits(next_code[len], len)
-            tab[c] = { sym = sym - 1, len = len }
-            next_code[len] = next_code[len] + 1
+    -- s = sym
+    -- l = len
+    for s, l in ipairs(lengths) do
+        if l > 0 then
+            local r = revbits(n[l], l)
+            t[r] = { sym = s - 1, len = l }
+            n[l] = n[l] + 1
         end
     end
 
-    return { tab = tab, max = maxlen }
+    return { tab = t, max = m }
 end
 
 local function read_huff(bs, h)
-    local code = 0
-    for len = 1, h.max do
-        code = code | (bs.readbits(1) << (len - 1))
-        local masked = code & ((1 << len) - 1)
-        local e = h.tab[masked]
-        if e and e.len == len then return e.sym end
+
+    -- c = code
+    local c = 0
+
+    -- l = len
+    for l = 1, h.max do
+        c = c | (bs.readbits(1) << (l - 1))
+        local e = h.tab[c & ((1 << l) - 1)]
+        if e and e.len == l then return e.sym end
     end
+
     error("invalid Huffman code")
 end
 
 local function inflate(data)
-    local bs = newbitstream(data)
-    local out = {}         -- out[i] = single-character string for byte i (1-based)
-    local outpos = 0
+    local bs, out, outpos = newbitstream(data), {}, 0
     local function append_byte(byte)
         outpos = outpos + 1
         out[outpos] = string.char(byte)
@@ -152,15 +158,14 @@ local function inflate(data)
                 dist = make_huff(dl)
             end
 
-            local len_extra = {
+            local len_extra, dist_extra = {
                 [257]={3,0},[258]={4,0},[259]={5,0},[260]={6,0},[261]={7,0},
                 [262]={8,0},[263]={9,0},[264]={10,0},[265]={11,1},[266]={13,1},
                 [267]={15,1},[268]={17,1},[269]={19,2},[270]={23,2},[271]={27,2},
                 [272]={31,2},[273]={35,3},[274]={43,3},[275]={51,3},[276]={59,3},
                 [277]={67,4},[278]={83,4},[279]={99,4},[280]={115,4},[281]={131,5},
                 [282]={163,5},[283]={195,5},[284]={227,5},[285]={258,0}
-            }
-            local dist_extra = {
+            },{
                 {1,0},{2,0},{3,0},{4,0},{5,1},{7,1},{9,2},{13,2},{17,3},{25,3},
                 {33,4},{49,4},{65,5},{97,5},{129,6},{193,6},{257,7},{385,7},{513,8},
                 {769,8},{1025,9},{1537,9},{2049,10},{3073,10},{4097,11},{6145,11},
@@ -177,8 +182,7 @@ local function inflate(data)
                     local entry = len_extra[sym]
                     local base, extra = entry[1], entry[2]
                     local add = extra > 0 and bs.readbits(extra) or 0
-                    local length = base + add
-                    local dsym = read_huff(bs, dist)
+                    local length, dsym = base + add, read_huff(bs, dist)
                     local dentry = dist_extra[dsym + 1]
                     local dbase, dextra = dentry[1], dentry[2]
                     local dadd = dextra > 0 and bs.readbits(dextra) or 0
@@ -219,60 +223,65 @@ end
 local function le16(s, i) local a,b = s:byte(i,i+1); return a + b*256 end
 local function le32(s, i)
     local a,b,c,d = s:byte(i, i+3)
-    return a + b*256 + c*65536 + d*16777216
+    return a + b * 256 + c * 65536 + d * 16777216
 end
 
 local function unzip(path)
     local f = assert(io.open(path, "rb"))
-    local data = f:read("*a"); f:close()
-    local pos = 1
+    local data, pos = f:read("*a"), 1 f:close()
     while true do
         if data:sub(pos, pos+3) ~= "PK\3\4" then break end
-        local _ = le16(data, pos+4)
-        local _ = le16(data, pos+6)
-        local cm = le16(data, pos+8)
-        local crc_expected = le32(data, pos+14)
-        local comp_size = le32(data, pos+18)
-        local uncomp_size = le32(data, pos+22)
-        local name_len = le16(data, pos+26)
-        local extra_len = le16(data, pos+28)
-        local filename = data:sub(pos+30, pos+29 + name_len)
-        local start = pos + 30 + name_len + extra_len
-        local compdata = data:sub(start, start + comp_size - 1)
+        -- _ = version needed
+        -- _ = flags
+        -- cm = cm
+        -- cr = Expected crc32 checksum
+        -- cs = Compressed size
+        -- us = Uncompressed size
+        -- nl = Length of file name
+        -- el = Extra length in the file name
 
-        local outstr
+        local _, _, cm, cr, cs, us, nl, el = le16(data, pos+4), le16(data, pos+6), le16(data, pos+8), le32(data, pos+14), le32(data, pos+18), le32(data, pos+22), le16(data, pos+26), le16(data, pos+28)
+
+        -- fn = The filename
+        -- st = The file Start offset
+        local fn, st = data:sub(pos+30, pos+29 + nl), pos + 30 + nl + el
+
+        -- cd = A buffer of the files data
+        -- os = The output stream
+        local cd, os = data:sub(st, st + cs - 1)
+
         if cm == 0 then
-            outstr = compdata
+            os = cd
         elseif cm == 8 then
-            outstr = inflate(compdata)
+            os = inflate(cd)
         else
             io.stderr:write("Unsupported compression method: "..tostring(cm).."\n")
         end
 
-        if outstr then
-            if #outstr ~= uncomp_size then
-                io.stderr:write(string.format("Warning: uncompressed size mismatch for %s: expected %d, got %d\n", filename, uncomp_size, #outstr))
+        if os then
+            if #os ~= us then
+                io.stderr:write(string.format("Warning: uncompressed size mismatch for %s: expected %d, got %d\n", fn, us, #os))
             end
-            local gotcrc = crc32(outstr)
-            if crc_expected ~= gotcrc then
-                io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", filename, crc_expected, gotcrc))
+            local gotcrc = crc32(os)
+            if cr ~= gotcrc then
+                io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", fn, cr, gotcrc))
             else
                 print(string.format("CRC OK: %08x", gotcrc))
             end
 
-            local dir = filename:match("(.+)/")
+            local dir = fn:match("(.+)/")
             if dir then
                 if os.execute then
                     -- portable make dir (POSIX/Windows-friendly-ish)
                     os.execute('mkdir -p "'..dir..'"')
                 end
             end
-            local of = assert(io.open(filename, "wb"))
-            of:write(outstr)
+            local of = assert(io.open(fn, "wb"))
+            of:write(os)
             of:close()
         end
 
-        pos = start + comp_size
+        pos = st + cs
     end
 end
 
