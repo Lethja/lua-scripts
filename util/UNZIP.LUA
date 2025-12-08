@@ -1,31 +1,47 @@
 #!/usr/bin/env lua
 
-local function newbitstream(data)
-    local pos, bitbuf, bitcnt = 1, 0, 0
-    local function needbits(n)
-        while bitcnt < n do
-            bitbuf = bitbuf + ((data:byte(pos) or 0) << bitcnt)
-            pos = pos + 1
-            bitcnt = bitcnt + 8
+-- nbs = new bit stream
+local function nbs(data)
+
+    -- p = position
+    -- bb = bit buffer
+    -- bc = bit count
+    local p, bb, bc = 1, 0, 0
+
+    -- nb = need bits
+    local function nb(n)
+        while bc < n do
+            bb = bb + ((data:byte(p) or 0) << bc)
+            p = p + 1
+            bc = bc + 8
         end
     end
-    local function readbits(n)
-        needbits(n)
-        local v = bitbuf & ((1 << n) - 1)
-        bitbuf, bitcnt = (bitbuf >> n), bitcnt - n
+
+    -- rb = read bits
+    local function rb(n)
+        nb(n)
+        local v = bb & ((1 << n) - 1)
+        bb, bc = (bb >> n), bc - n
         return v
     end
-    local function alignbyte() bitbuf, bitcnt = 0, 0 end
-    local function skip(n) pos = pos + n end
-    return { readbits = readbits, align = alignbyte, pos = pos, skip = skip }
+
+    -- ab = align byte
+    local function ab() bb, bc = 0, 0 end
+
+    -- s = skip
+    local function s(n) p = p + n end
+
+    return { r = rb, a = ab, p = p, s = s }
 end
 
 local function revbits(x, bits)
     local y = 0
+
     for _ = 1, bits do
         y = (y << 1) | (x & 1)
         x = x >> 1
     end
+
     return y
 end
 
@@ -71,7 +87,7 @@ local function read_huff(bs, h)
 
     -- l = len
     for l = 1, h.max do
-        c = c | (bs.readbits(1) << (l - 1))
+        c = c | (bs.r(1) << (l - 1))
         local e = h.tab[c & ((1 << l) - 1)]
         if e and e.len == l then return e.sym end
     end
@@ -80,40 +96,50 @@ local function read_huff(bs, h)
 end
 
 local function inflate(data)
-    local bs, out, outpos = newbitstream(data), {}, 0
-    local function append_byte(byte)
-        outpos = outpos + 1
-        out[outpos] = string.char(byte)
+
+    -- bs = bit stream
+    -- o = output byte stream
+    -- op = output position
+    -- d = done
+    local bs, o, op, d = nbs(data), {}, 0, false
+
+    -- ab = append byte
+    local function ab(byte)
+        op = op + 1
+        o[op] = string.char(byte)
     end
-    local function append_str(s)
+
+    -- as = append string
+    local function as(s)
         -- push each byte as single-character entry
         for i = 1, #s do
-            outpos = outpos + 1
-            out[outpos] = s:sub(i,i)
+            op = op + 1
+            o[op] = s:sub(i,i)
         end
     end
 
-    local done = false
-    while not done do
-        local final = bs.readbits(1)
-        local btype = bs.readbits(2)
+    while not d do
 
-        if btype == 0 then
+        -- f = final
+        -- t = block type
+        local f, t = bs.r(1), bs.r(2)
+
+        if t == 0 then
             -- uncompressed block: align, then read LEN, NLEN from byte stream
-            bs.align()
-            local p = bs.pos()
+            bs.a()
+            local p = bs.p()
             local function le16(s, i)
                 local a,b = s:byte(i,i+1) return a + b*256
             end
             local len, _ = le16(data, p), le16(data, p + 2)
-            bs.skip(4) -- consume LEN and NLEN
-            local s = data:sub(bs.pos(), bs.pos() + len - 1)
-            append_str(s)
-            bs.skip(len)
+            bs.s(4) -- consume LEN and NLEN
+            local s = data:sub(bs.p(), bs.p() + len - 1)
+            as(s)
+            bs.s(len)
 
-        elseif btype == 1 or btype == 2 then
+        elseif t == 1 or t == 2 then
             local litlen, dist
-            if btype == 1 then
+            if t == 1 then
                 -- fixed Huffman
                 local ll = {}
                 for _ = 0, 143 do ll[#ll+1] = 8 end
@@ -126,13 +152,13 @@ local function inflate(data)
                 dist = make_huff(dl)
             else
                 -- dynamic Huffman
-                local hlit = bs.readbits(5) + 257
-                local hdist = bs.readbits(5) + 1
-                local hclen = bs.readbits(4) + 4
+                local hlit = bs.r(5) + 257
+                local hdist = bs.r(5) + 1
+                local hclen = bs.r(4) + 4
                 local order = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15}
                 local clen = {}
                 for i = 1, 19 do clen[i] = 0 end
-                for i = 1, hclen do clen[order[i] + 1] = bs.readbits(3) end
+                for i = 1, hclen do clen[order[i] + 1] = bs.r(3) end
                 local chuff = make_huff(clen)
                 local lens = {}
                 while #lens < hlit + hdist do
@@ -140,14 +166,14 @@ local function inflate(data)
                     if sym <= 15 then
                         lens[#lens + 1] = sym
                     elseif sym == 16 then
-                        local r = bs.readbits(2) + 3
+                        local r = bs.r(2) + 3
                         local last = lens[#lens]
                         for _ = 1, r do lens[#lens + 1] = last end
                     elseif sym == 17 then
-                        local r = bs.readbits(3) + 3
+                        local r = bs.r(3) + 3
                         for _ = 1, r do lens[#lens + 1] = 0 end
                     elseif sym == 18 then
-                        local r = bs.readbits(7) + 11
+                        local r = bs.r(7) + 11
                         for _ = 1, r do lens[#lens + 1] = 0 end
                     end
                 end
@@ -175,38 +201,38 @@ local function inflate(data)
             while true do
                 local sym = read_huff(bs, litlen)
                 if sym < 256 then
-                    append_byte(sym)
+                    ab(sym)
                 elseif sym == 256 then
                     break
                 else
                     local entry = len_extra[sym]
                     local base, extra = entry[1], entry[2]
-                    local add = extra > 0 and bs.readbits(extra) or 0
+                    local add = extra > 0 and bs.r(extra) or 0
                     local length, dsym = base + add, read_huff(bs, dist)
                     local dentry = dist_extra[dsym + 1]
                     local dbase, dextra = dentry[1], dentry[2]
-                    local dadd = dextra > 0 and bs.readbits(dextra) or 0
+                    local dadd = dextra > 0 and bs.r(dextra) or 0
                     local distval = dbase + dadd
 
-                    if distval <= 0 or distval > outpos then
-                        error("invalid distance "..tostring(distval).." (outpos="..tostring(outpos)..")")
+                    if distval <= 0 or distval > op then
+                        error("invalid distance "..tostring(distval).." (outpos="..tostring(op)..")")
                     end
 
-                    local base_index = outpos - distval
+                    local base_index = op - distval
                     for i = 1, length do
                         -- copy byte-by-byte (handles overlaps correctly)
-                        append_byte(out[base_index + i]:byte())
+                        ab(o[base_index + i]:byte())
                     end
                 end
             end
         else
-            error("unsupported block type: "..tostring(btype))
+            error("unsupported block type: "..tostring(t))
         end
 
-        if final == 1 then done = true end
+        if f == 1 then d = true end
     end
 
-    return table.concat(out)
+    return table.concat(o)
 end
 
 local function crc32(s)
@@ -262,18 +288,22 @@ local function unzip(path)
             if #os ~= us then
                 io.stderr:write(string.format("Warning: uncompressed size mismatch for %s: expected %d, got %d\n", fn, us, #os))
             end
-            local gotcrc = crc32(os)
-            if cr ~= gotcrc then
-                io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", fn, cr, gotcrc))
+
+            -- c = actual crc32
+            local c = crc32(os)
+
+            if cr ~= c then
+                io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", fn, cr, c))
             else
-                print(string.format("CRC OK: %08x", gotcrc))
+                print(string.format("CRC OK: %08x", c))
             end
 
-            local dir = fn:match("(.+)/")
-            if dir then
+            -- d = directory
+            local d = fn:match("(.+)/")
+            if d then
                 if os.execute then
                     -- portable make dir (POSIX/Windows-friendly-ish)
-                    os.execute('mkdir -p "'..dir..'"')
+                    os.execute('mkdir -p "'.. d ..'"')
                 end
             end
             local of = assert(io.open(fn, "wb"))
