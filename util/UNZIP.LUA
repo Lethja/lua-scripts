@@ -199,30 +199,40 @@ local function inflate(data)
 			}
 
 			while true do
-				local sym = read_huff(bs, litlen)
-				if sym < 256 then
-					ab(sym)
-				elseif sym == 256 then
+				-- s = sym
+				local s = read_huff(bs, litlen)
+				if s < 256 then
+					ab(s)
+				elseif s == 256 then
 					break
 				else
-					local entry = len_extra[sym]
-					local base, extra = entry[1], entry[2]
-					local add = extra > 0 and bs.r(extra) or 0
-					local length, dsym = base + add, read_huff(bs, dist)
-					local dentry = dist_extra[dsym + 1]
-					local dbase, dextra = dentry[1], dentry[2]
-					local dadd = dextra > 0 and bs.r(dextra) or 0
-					local distval = dbase + dadd
 
-					if distval <= 0 or distval > op then
-						error("invalid distance "..tostring(distval).." (outpos="..tostring(op)..")")
+					-- e = entry
+					-- b = base
+					-- x = extra
+					-- a = add
+					-- l = length
+					-- ds = dsym
+					-- de = dentry
+					-- db = dbase
+					-- dx = dextra
+					-- da = dadd
+					local e, b, x, a, l, ds, de, db, dx, da, dv = len_extra[s]
+					b, x = e[1], e[2]
+					a = x > 0 and bs.r(x) or 0
+					l, ds = b + a, read_huff(bs, dist)
+					de = dist_extra[ds + 1]
+					db, dx = de[1], de[2]
+					da = dx > 0 and bs.r(dx) or 0
+					dv = db + da
+
+					if dv <= 0 or dv > op then
+						error("invalid distance "..tostring(dv).." (outpos="..tostring(op)..")")
 					end
 
-					local base_index = op - distval
-					for i = 1, length do
-						-- copy byte-by-byte (handles overlaps correctly)
-						ab(o[base_index + i]:byte())
-					end
+					-- bi = base index
+					local bi = op - dv
+					for i = 1, l do ab(o[bi + i]:byte()) end
 				end
 			end
 		else
@@ -236,21 +246,21 @@ local function inflate(data)
 end
 
 local function crc32(s)
-	local crc = 0xFFFFFFFF
+
+	-- x = maximum
+	-- c = crc number
+	local x, c = 0xFFFFFFFF c = x
+
 	for i = 1, #s do
-		crc = crc ~ s:byte(i)
-		for _ = 1, 8 do
-			crc = (crc >> 1) ~ (0xEDB88320 & (-(crc & 1)))
-		end
+		c = c ~ s:byte(i)
+		for _ = 1, 8 do c = (c >> 1) ~ (0xEDB88320 & (-(c & 1))) end
 	end
-	return crc ~ 0xFFFFFFFF
+
+	return c ~ x
 end
 
-local function le16(s, i) local a,b = s:byte(i,i+1); return a + b*256 end
-local function le32(s, i)
-	local a,b,c,d = s:byte(i, i+3)
-	return a + b * 256 + c * 65536 + d * 16777216
-end
+local function le16(s, i) local a,b = s:byte(i,i+1) return a + b*256 end
+local function le32(s, i) local a,b,c,d = s:byte(i, i+3) return a + b * 256 + c * 65536 + d * 16777216 end
 
 local function unzip(path)
 	local f = assert(io.open(path, "rb"))
