@@ -276,6 +276,8 @@ local function unzip(path)
 		-- os = The output stream
 		local cd, os = data:sub(st, st + cs - 1)
 
+		print("Extracting: " .. fn)
+
 		if cm == 0 then
 			os = cd
 		elseif cm == 8 then
@@ -294,8 +296,6 @@ local function unzip(path)
 
 			if cr ~= c then
 				io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", fn, cr, c))
-			else
-				print(string.format("CRC OK: %08x", c))
 			end
 
 			-- d = directory
