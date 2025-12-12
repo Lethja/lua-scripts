@@ -276,9 +276,10 @@ local function le32(s, i) local a,b,c,d = s:byte(i, i+3) return a + b * 256 + c 
 local function unzip(path)
 
 	-- f = file
-	-- d = data
+	-- d = data (or error string string if file can't be opened)
 	-- p = position
-	local f, d, p = assert(io.open(path, "rb"))
+	local f, d, p = io.open(path, "rb")
+	if d then print(d) os.exit(1) end
 	d, p = f:read("*a"), 1 f:close()
 
 	while true do
@@ -305,10 +306,13 @@ local function unzip(path)
 		print("Extracting: " .. fn)
 
 		if cm == 0 then
+			-- no compression
 			os = cd
 		elseif cm == 8 then
+			-- deflate
 			os = inflate(cd)
 		else
+			-- unsupported compression
 			io.stderr:write("Unsupported compression method: "..tostring(cm).."\n")
 		end
 
@@ -342,8 +346,8 @@ local function unzip(path)
 	end
 end
 
-if not arg[1] then
-	io.stderr:write("Usage: lua unzip_fixed.lua <file.zip>\n")
+if #arg < 1 then
+	print((arg[-1] or "?") .. " " .. (arg[0] or "?") .. " file[.zip]")
 	os.exit(1)
 end
 unzip(arg[1])
