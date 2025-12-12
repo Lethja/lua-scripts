@@ -152,39 +152,49 @@ local function inflate(data)
 				dist = make_huff(dl)
 			else
 				-- dynamic Huffman
-				local hlit = bs.r(5) + 257
-				local hdist = bs.r(5) + 1
-				local hclen = bs.r(4) + 4
-				local order = {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15}
-				local clen = {}
-				for i = 1, 19 do clen[i] = 0 end
-				for i = 1, hclen do clen[order[i] + 1] = bs.r(3) end
-				local chuff = make_huff(clen)
-				local lens = {}
-				while #lens < hlit + hdist do
-					local sym = read_huff(bs, chuff)
-					if sym <= 15 then
-						lens[#lens + 1] = sym
-					elseif sym == 16 then
-						local r = bs.r(2) + 3
-						local last = lens[#lens]
-						for _ = 1, r do lens[#lens + 1] = last end
-					elseif sym == 17 then
+
+				-- hl = hlit
+				-- hd = hdist
+				-- hc = hclen
+				-- od = order
+				-- cl = clen
+				-- le = lens
+				-- ch = chuff
+				local hl, hd, hc, od, cl, le, ch = bs.r(5) + 257, bs.r(5) + 1, bs.r(4) + 4, {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15}, {}, {}
+
+				for i = 1, 19 do cl[i] = 0 end
+				for i = 1, hc do cl[od[i] + 1] = bs.r(3) end
+				ch = make_huff(cl)
+
+				while #le < hl + hd do
+
+					-- s = sym
+					local s = read_huff(bs, ch)
+
+					if s <= 15 then
+						le[#le + 1] = s
+					elseif s == 16 then
+						local r, l = bs.r(2) + 3, le[#le]
+						for _ = 1, r do le[#le + 1] = l
+						end
+					elseif s == 17 then
 						local r = bs.r(3) + 3
-						for _ = 1, r do lens[#lens + 1] = 0 end
-					elseif sym == 18 then
+						for _ = 1, r do le[#le + 1] = 0 end
+					elseif s == 18 then
 						local r = bs.r(7) + 11
-						for _ = 1, r do lens[#lens + 1] = 0 end
+						for _ = 1, r do le[#le + 1] = 0 end
 					end
 				end
 				local ll, dl = {}, {}
-				for i = 1, hlit do ll[i] = lens[i] end
-				for i = hlit + 1, hlit + hdist do dl[i - hlit] = lens[i] end
+				for i = 1, hl do ll[i] = le[i] end
+				for i = hl + 1, hl + hd do dl[i - hl] = le[i] end
 				litlen = make_huff(ll)
 				dist = make_huff(dl)
 			end
 
-			local len_extra, dist_extra = {
+			-- lex = length extra
+			-- dix = dist extra
+			local lex, dix = {
 				[257]={3,0},[258]={4,0},[259]={5,0},[260]={6,0},[261]={7,0},
 				[262]={8,0},[263]={9,0},[264]={10,0},[265]={11,1},[266]={13,1},
 				[267]={15,1},[268]={17,1},[269]={19,2},[270]={23,2},[271]={27,2},
@@ -217,11 +227,12 @@ local function inflate(data)
 					-- db = dbase
 					-- dx = dextra
 					-- da = dadd
-					local e, b, x, a, l, ds, de, db, dx, da, dv = len_extra[s]
+					local e, b, x, a, l, ds, de, db, dx, da, dv = lex[s]
+
 					b, x = e[1], e[2]
 					a = x > 0 and bs.r(x) or 0
 					l, ds = b + a, read_huff(bs, dist)
-					de = dist_extra[ds + 1]
+					de = dix[ds + 1]
 					db, dx = de[1], de[2]
 					da = dx > 0 and bs.r(dx) or 0
 					dv = db + da
@@ -263,10 +274,16 @@ local function le16(s, i) local a,b = s:byte(i,i+1) return a + b*256 end
 local function le32(s, i) local a,b,c,d = s:byte(i, i+3) return a + b * 256 + c * 65536 + d * 16777216 end
 
 local function unzip(path)
-	local f = assert(io.open(path, "rb"))
-	local data, pos = f:read("*a"), 1 f:close()
+
+	-- f = file
+	-- d = data
+	-- p = position
+	local f, d, p = assert(io.open(path, "rb"))
+	d, p = f:read("*a"), 1 f:close()
+
 	while true do
-		if data:sub(pos, pos+3) ~= "PK\3\4" then break end
+		if d:sub(p, p +3) ~= "PK\3\4" then break end
+
 		-- _ = version needed
 		-- _ = flags
 		-- cm = cm
@@ -275,16 +292,15 @@ local function unzip(path)
 		-- us = Uncompressed size
 		-- nl = Length of file name
 		-- el = Extra length in the file name
-
-		local _, _, cm, cr, cs, us, nl, el = le16(data, pos+4), le16(data, pos+6), le16(data, pos+8), le32(data, pos+14), le32(data, pos+18), le32(data, pos+22), le16(data, pos+26), le16(data, pos+28)
+		local _, _, cm, cr, cs, us, nl, el = le16(d, p +4), le16(d, p +6), le16(d, p +8), le32(d, p +14), le32(d, p +18), le32(d, p +22), le16(d, p +26), le16(d, p +28)
 
 		-- fn = The filename
 		-- st = The file Start offset
-		local fn, st = data:sub(pos+30, pos+29 + nl), pos + 30 + nl + el
+		local fn, st = d:sub(p +30, p +29 + nl), p + 30 + nl + el
 
 		-- cd = A buffer of the files data
 		-- os = The output stream
-		local cd, os = data:sub(st, st + cs - 1)
+		local cd, os = d:sub(st, st + cs - 1)
 
 		print("Extracting: " .. fn)
 
@@ -308,12 +324,13 @@ local function unzip(path)
 				io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", fn, cr, c))
 			end
 
-			-- d = directory
-			local d = fn:match("(.+)/")
-			if d then
+			-- di = directory
+			local di = fn:match("(.+)/")
+
+			if di then
 				if os.execute then
 					-- portable make dir (POSIX/Windows-friendly-ish)
-					os.execute('mkdir -p "'.. d ..'"')
+					os.execute('mkdir -p "'.. di ..'"')
 				end
 			end
 			local of = assert(io.open(fn, "wb"))
@@ -321,7 +338,7 @@ local function unzip(path)
 			of:close()
 		end
 
-		pos = st + cs
+		p = st + cs
 	end
 end
 
