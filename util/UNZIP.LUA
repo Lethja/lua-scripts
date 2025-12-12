@@ -34,7 +34,8 @@ local function nbs(data)
 	return { r = rb, a = ab, p = p, s = s }
 end
 
-local function revbits(x, bits)
+-- rv = revbits
+local function rv(x, bits)
 	local y = 0
 
 	for _ = 1, bits do
@@ -45,7 +46,8 @@ local function revbits(x, bits)
 	return y
 end
 
-local function make_huff(lengths)
+-- mh = make huff
+local function mh(lengths)
 
 	-- m = maximum length
 	-- c = counts
@@ -71,7 +73,7 @@ local function make_huff(lengths)
 	-- l = len
 	for s, l in ipairs(lengths) do
 		if l > 0 then
-			local r = revbits(n[l], l)
+			local r = rv(n[l], l)
 			t[r] = { sym = s - 1, len = l }
 			n[l] = n[l] + 1
 		end
@@ -80,7 +82,8 @@ local function make_huff(lengths)
 	return { tab = t, max = m }
 end
 
-local function read_huff(bs, h)
+-- rh = read huff
+local function rh(bs, h)
 
 	-- c = code
 	local c = 0
@@ -98,27 +101,21 @@ end
 local function inflate(data)
 
 	-- bs = bit stream
-	-- o = output byte stream
+	-- ob = output byte stream
 	-- op = output position
-	-- d = done
-	local bs, o, op, d = nbs(data), {}, 0, false
+	-- kg = keep going (in a loop)
+	local bs, ob, op, kg = nbs(data), {}, 0, true
 
 	-- ab = append byte
-	local function ab(byte)
-		op = op + 1
-		o[op] = string.char(byte)
-	end
+	local function ab(byte) op = op + 1 ob[op] = string.char(byte) end
 
 	-- as = append string
 	local function as(s)
 		-- push each byte as single-character entry
-		for i = 1, #s do
-			op = op + 1
-			o[op] = s:sub(i,i)
-		end
+		for i = 1, #s do op = op + 1 ob[op] = s:sub(i,i) end
 	end
 
-	while not d do
+	while kg do
 
 		-- f = final
 		-- t = block type
@@ -128,9 +125,7 @@ local function inflate(data)
 			-- uncompressed block: align, then read LEN, NLEN from byte stream
 			bs.a()
 			local p = bs.p()
-			local function le16(s, i)
-				local a,b = s:byte(i,i+1) return a + b*256
-			end
+			local function le16(s, i) local a,b = s:byte(i,i+1) return a + b*256 end
 			local len, _ = le16(data, p), le16(data, p + 2)
 			bs.s(4) -- consume LEN and NLEN
 			local s = data:sub(bs.p(), bs.p() + len - 1)
@@ -138,18 +133,16 @@ local function inflate(data)
 			bs.s(len)
 
 		elseif t == 1 or t == 2 then
-			local litlen, dist
+			local ll, dl, h, d = {}, {}
 			if t == 1 then
 				-- fixed Huffman
-				local ll = {}
 				for _ = 0, 143 do ll[#ll+1] = 8 end
 				for _ = 144, 255 do ll[#ll+1] = 9 end
 				for _ = 256, 279 do ll[#ll+1] = 7 end
 				for _ = 280, 287 do ll[#ll+1] = 8 end
-				litlen = make_huff(ll)
-				local dl = {}
+				h = mh(ll)
 				for _ = 0, 31 do dl[#dl+1] = 5 end
-				dist = make_huff(dl)
+				d = mh(dl)
 			else
 				-- dynamic Huffman
 
@@ -164,12 +157,12 @@ local function inflate(data)
 
 				for i = 1, 19 do cl[i] = 0 end
 				for i = 1, hc do cl[od[i] + 1] = bs.r(3) end
-				ch = make_huff(cl)
+				ch = mh(cl)
 
 				while #le < hl + hd do
 
 					-- s = sym
-					local s = read_huff(bs, ch)
+					local s = rh(bs, ch)
 
 					if s <= 15 then
 						le[#le + 1] = s
@@ -185,11 +178,9 @@ local function inflate(data)
 						for _ = 1, r do le[#le + 1] = 0 end
 					end
 				end
-				local ll, dl = {}, {}
 				for i = 1, hl do ll[i] = le[i] end
 				for i = hl + 1, hl + hd do dl[i - hl] = le[i] end
-				litlen = make_huff(ll)
-				dist = make_huff(dl)
+				h = mh(ll) d = mh(dl)
 			end
 
 			-- lex = length extra
@@ -210,7 +201,7 @@ local function inflate(data)
 
 			while true do
 				-- s = sym
-				local s = read_huff(bs, litlen)
+				local s = rh(bs, h)
 				if s < 256 then
 					ab(s)
 				elseif s == 256 then
@@ -231,7 +222,7 @@ local function inflate(data)
 
 					b, x = e[1], e[2]
 					a = x > 0 and bs.r(x) or 0
-					l, ds = b + a, read_huff(bs, dist)
+					l, ds = b + a, rh(bs, d)
 					de = dix[ds + 1]
 					db, dx = de[1], de[2]
 					da = dx > 0 and bs.r(dx) or 0
@@ -243,17 +234,17 @@ local function inflate(data)
 
 					-- bi = base index
 					local bi = op - dv
-					for i = 1, l do ab(o[bi + i]:byte()) end
+					for i = 1, l do ab(ob[bi + i]:byte()) end
 				end
 			end
 		else
 			error("unsupported block type: "..tostring(t))
 		end
 
-		if f == 1 then d = true end
+		if f == 1 then kg = false end
 	end
 
-	return table.concat(o)
+	return table.concat(ob)
 end
 
 local function crc32(s)
