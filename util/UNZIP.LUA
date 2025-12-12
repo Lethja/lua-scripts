@@ -229,7 +229,7 @@ local function inflate(data)
 					dv = db + da
 
 					if dv <= 0 or dv > op then
-						error("invalid distance "..tostring(dv).." (outpos="..tostring(op)..")")
+						error("Invalid distance " .. tostring(dv) .. " (outpos=" .. tostring(op) .. ")")
 					end
 
 					-- bi = base index
@@ -238,7 +238,7 @@ local function inflate(data)
 				end
 			end
 		else
-			error("unsupported block type: "..tostring(t))
+			error("Unsupported block type: "..tostring(t))
 		end
 
 		if f == 1 then kg = false end
@@ -304,33 +304,33 @@ local function unzip(path)
 			os = inflate(cd)
 		else
 			-- unsupported compression
-			io.stderr:write("Unsupported compression method: "..tostring(cm).."\n")
+			print("Unsupported compression")
 		end
 
 		if os then
-			if #os ~= us then
-				io.stderr:write(string.format("Warning: uncompressed size mismatch for %s: expected %d, got %d\n", fn, us, #os))
-			end
+			if #os ~= us then print("Size mismatch") end
 
 			-- c = actual crc32
-			local c = crc32(os)
-
-			if cr ~= c then
-				io.stderr:write(string.format("CRC mismatch for %s: expected %08x, got %08x\n", fn, cr, c))
-			end
-
 			-- di = directory
-			local di = fn:match("(.+)/")
+			-- of = output file
+			local c, di, of = crc32(os)
 
+			if cr ~= c then print("CRC mismatch") end
+
+			di = fn:match("(.+)/")
 			if di then
 				if os.execute then
 					-- portable make dir (POSIX/Windows-friendly-ish)
 					os.execute('mkdir -p "'.. di ..'"')
 				end
 			end
-			local of = assert(io.open(fn, "wb"))
-			of:write(os)
-			of:close()
+
+			of, di = io.open(fn, "wb")
+			if di then
+				print(di)
+			else
+				of:write(os) of:close()
+			end
 		end
 
 		p = st + cs
