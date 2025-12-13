@@ -31,7 +31,10 @@ local function nbs(data)
 	-- s = skip
 	local function s(n) p = p + n end
 
-	return { r = rb, a = ab, p = p, s = s }
+	-- TODO: inflate() currently expects bs.p() callable, change that
+	local function gp() return p end
+
+	return { r = rb, a = ab, p = gp, s = s }
 end
 
 -- rv = revbits
@@ -261,46 +264,90 @@ local function crc32(s)
 	return c ~ x
 end
 
-local function le16(s, i) local a,b = s:byte(i,i+1) return a + b*256 end
-local function le32(s, i) local a,b,c,d = s:byte(i, i+3) return a + b * 256 + c * 65536 + d * 16777216 end
-
 local function unzip(path)
 
+	-- C = read chunk size
 	-- f = file
-	-- d = data (or error string string if file can't be opened)
-	-- p = position
-	local f, d, p = io.open(path, "rb")
-	if d then print(d) os.exit(1) end
-	d, p = f:read("*a"), 1 f:close()
+	local C, f = 4096
+
+	f, E = io.open(path, "rb")
+	if E then print(E) os.exit(1) end
+
+	-- R = read bytes
+	local function R(n)
+		local s, E = f:read(n)
+		if E then print(E) os.exit(1) end
+		return s
+	end
+
+	local function S(n) f:seek("cur", n) end
+
+	local function le16() local a, b = R(2):byte(1, 2) return a + b * 256 end
+	local function le32() local a, b, c, d = R(4):byte(1, 4) return a + b * 256 + c * 65536 + d * 16777216 end
+
+	-- RB = read n bytes chunked
+	local function RB(n)
+
+		-- p = parts
+		-- g = got
+		-- w = want
+		-- d = data
+		local p, g, w, d = {}, 0
+
+		while g < n do
+			w = math.min(C, n - g)
+			d, E = R(w)
+			if E then return nil, E end
+			p[#p + 1] = d
+			g = g + #d
+		end
+
+		return table.concat(p)
+	end
 
 	while true do
-		if d:sub(p, p +3) ~= "PK\3\4" then break end
 
-		-- _ = version needed
-		-- _ = flags
-		-- cm = cm
+		-- s  = signature
+		-- v  = version needed
+		-- fl = flags
+		-- cm = method
 		-- cr = Expected crc32 checksum
 		-- cs = Compressed size
 		-- us = Uncompressed size
 		-- nl = Length of file name
 		-- el = Extra length in the file name
-		local _, _, cm, cr, cs, us, nl, el = le16(d, p +4), le16(d, p +6), le16(d, p +8), le32(d, p +14), le32(d, p +18), le32(d, p +22), le16(d, p +26), le16(d, p +28)
-
-		-- fn = The filename
-		-- st = The file Start offset
-		local fn, st = d:sub(p +30, p +29 + nl), p + 30 + nl + el
-
 		-- cd = A buffer of the files data
 		-- os = The output stream
-		local cd, os = d:sub(st, st + cs - 1)
+		local s, v, fl, cm, ok, cr, cs, us, nl, el, fn, cd, os = f:read(4)
+		if not s or #s < 4 then break end
+		if s ~= "PK\3\4" then break end
+
+		v, E = le16() if not v then break end -- version
+		fl, E = le16() if not fl then break end -- flags
+		cm, E = le16() if not cm then break end -- method
+		S(4) -- modification time and date
+		cr, E = le32() if not cr then break end -- crc32
+		cs, E = le32() if not cs then break end -- compressed size
+		us, E = le32() if not us then break end -- uncompressed size
+		nl, E = le16() if not nl then break end -- name length
+		el, E = le16() if not el then break end -- extra name length
+
+		fn, E = R(nl) if not fn then break end -- filename
+		if el > 0 then S(el) end
 
 		print("Extracting: " .. fn)
+
+		cd, E = RB(cs)
+		if not cd then
+			print(e)
+			break
+		end
 
 		if cm == 0 then
 			-- no compression
 			os = cd
 		elseif cm == 8 then
-			-- deflate
+			-- deflate (still in-memory per entry)
 			os = inflate(cd)
 		else
 			-- unsupported compression
@@ -325,16 +372,16 @@ local function unzip(path)
 				end
 			end
 
-			of, di = io.open(fn, "wb")
-			if di then
-				print(di)
+			of, E = io.open(fn, "wb")
+			if not of then
+				print(E)
 			else
 				of:write(os) of:close()
 			end
 		end
-
-		p = st + cs
 	end
+
+	f:close()
 end
 
 if #arg < 1 then
