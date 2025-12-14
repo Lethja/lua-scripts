@@ -1,3 +1,5 @@
+if not LIB then print("Please run unzip instead") os.exit(1) end
+
 ---Inflate (a.k.a decompress) a deflated file inside a zip
 ---@param r function The reader function
 ---@param w function The writer function

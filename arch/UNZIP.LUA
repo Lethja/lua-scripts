@@ -1,6 +1,7 @@
 #!/usr/bin/env lua
 
 package.path = package.path .. ";?.LUA" --In case of a case sensitive operating system
+LIB=1
 
 ---Halt and catch fire if E is set
 function D() if E then error(E, 0) end end
