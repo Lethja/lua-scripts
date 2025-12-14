@@ -1,7 +1,7 @@
 #!/usr/bin/env lua
 
--- nbs = new bit stream
-local function nbs(reader)
+---New bit stream
+local function nbs(r)
 
 	-- b = buffer
 	-- p = position
@@ -9,20 +9,21 @@ local function nbs(reader)
 	-- bc = bit count
 	local b, p, bb, bc = "", 1, 0, 0
 
-	local function fill()
+	---Fill
+	local function F()
 		if p > #b then
-			b = reader()
+			b = r()
 			if not b or #b == 0 then return false end
 			p = 1
 		end
 		return true
 	end
 
-	-- nb = need bits
+	---Need bits
 	local function nb(n)
 		while bc < n do
 			if p > #b then
-				if not fill() then error("Unexpected EOF") end
+				if not F() then error("Unexpected EOF") end
 			end
 			bb = bb + (b:byte(p) << bc)
 			p = p + 1
@@ -30,7 +31,7 @@ local function nbs(reader)
 		end
 	end
 
-	-- rb = read bits
+	---Read bits
 	local function rb(n)
 		nb(n)
 		local v = bb & ((1 << n) - 1)
@@ -38,29 +39,32 @@ local function nbs(reader)
 		return v
 	end
 
-	-- ab = align byte
+	---Align byte
 	local function ab() bb, bc = 0, 0 end
 
-	-- raw = read raw bytes
-	local function raw(n)
+	---Read raw bytes
+	local function ra(n)
 		ab()
-		local out, got = {}, 0
-		while got < n do
+
+		-- o = out
+		-- g = got
+		local o, g = {}, 0
+		while g < n do
 			if p > #b then
-				if not fill() then error("Unexpected EOF") end
+				if not F() then error("Unexpected EOF") end
 			end
-			local take = math.min(n - got, #b - p + 1)
-			out[#out+1] = b:sub(p, p + take - 1)
+			local take = math.min(n - g, #b - p + 1)
+			o[#o +1] = b:sub(p, p + take - 1)
 			p = p + take
-			got = got + take
+			g = g + take
 		end
-		return table.concat(out)
+		return table.concat(o)
 	end
 
-	return { r = rb, a = ab, raw = raw }
+	return { r = rb, a = ab, raw = ra }
 end
 
--- rv = revbits
+---Reverse bits
 local function rv(x, bits)
 	local y = 0
 
@@ -72,7 +76,7 @@ local function rv(x, bits)
 	return y
 end
 
--- mh = make huff
+---Make huffman
 local function mh(lengths)
 
 	-- m = maximum length
@@ -108,7 +112,7 @@ local function mh(lengths)
 	return { tab = t, max = m }
 end
 
--- rh = read huff
+---Read huffman
 local function rh(bs, h)
 
 	-- c = code
@@ -124,38 +128,41 @@ local function rh(bs, h)
 	error("invalid Huffman code")
 end
 
-local function inflate(reader, writer)
+---Inflate a deflated file inside a zip
+---@param r function The reader function
+---@param w function The writer function
+local function inf(r, w)
 
 	-- bs = bit stream
 	-- op = output position
 	-- kg = keep going (in a loop)
-	-- win = sliding window (32KB circular buffer)
+	-- sw = sliding window (32KB circular buffer)
 	-- wp = window pointer
-	-- out = output chunk buffer
-	local bs, op, kg, win, wp, out = nbs(reader), 0, true, {}, 0, {}
+	-- o  = output chunk buffer
+	local bs, op, kg, sw, wp, o = nbs(r), 0, true, {}, 0, {}
 
-	-- flush = write to sink
-	local function flush()
-		if #out > 0 then
-			writer(table.concat(out))
-			out = {}
+	---Flush all unwritten data to the output file
+	local function F()
+		if #o > 0 then
+			w(table.concat(o))
+			o = {}
 		end
 	end
 
-	-- ab = append byte
+	---Append byte
 	local function ab(byte)
 		op = op + 1
 
 		-- Add to output chunk
-		out[#out+1] = string.char(byte)
-		if #out >= 4096 then flush() end
+		o[#o +1] = string.char(byte)
+		if #o >= 4096 then F() end
 
 		-- Add to history window
-		win[wp] = byte
+		sw[wp] = byte
 		wp = (wp + 1) % 32768
 	end
 
-	-- as = append string
+	---Append string
 	local function as(s) for i = 1, #s do ab(s:byte(i)) end end
 
 	while kg do
@@ -166,9 +173,9 @@ local function inflate(reader, writer)
 
 		if t == 0 then
 			-- uncompressed block: align, then read LEN, NLEN from byte stream
-			local h, len, s = bs.raw(4)
+			local h, len, s = bs.ra(4)
 			len = h:byte(1) + h:byte(2)*256
-			s = bs.raw(len)
+			s = bs.ra(len)
 			as(s)
 
 		elseif t == 1 or t == 2 then
@@ -206,15 +213,15 @@ local function inflate(reader, writer)
 					if s <= 15 then
 						le[#le + 1] = s
 					elseif s == 16 then
-						local r, l = bs.r(2) + 3, le[#le]
-						for _ = 1, r do le[#le + 1] = l
+						local x, l = bs.r(2) + 3, le[#le]
+						for _ = 1, x do le[#le + 1] = l
 						end
 					elseif s == 17 then
-						local r = bs.r(3) + 3
-						for _ = 1, r do le[#le + 1] = 0 end
+						local x = bs.r(3) + 3
+						for _ = 1, x do le[#le + 1] = 0 end
 					elseif s == 18 then
-						local r = bs.r(7) + 11
-						for _ = 1, r do le[#le + 1] = 0 end
+						local x = bs.r(7) + 11
+						for _ = 1, x do le[#le + 1] = 0 end
 					end
 				end
 				for i = 1, hl do ll[i] = le[i] end
@@ -274,7 +281,7 @@ local function inflate(reader, writer)
 					-- Read from window history
 					for _ = 1, l do
 						local p = (wp - dv) % 32768
-						ab(win[p] or 0)
+						ab(sw[p] or 0)
 					end
 				end
 			end
@@ -285,7 +292,7 @@ local function inflate(reader, writer)
 		if f == 1 then kg = false end
 	end
 
-	flush()
+	F()
 end
 
 local function crc32(s, c)
@@ -303,13 +310,13 @@ local function crc32(s, c)
 	return c ~ x
 end
 
-local function unzip(path)
+local function unzip(p)
 
 	-- C = read chunk size
 	-- f = file
 	local C, f = 4096
 
-	f, E = io.open(path, "rb")
+	f, E = io.open(p, "rb")
 	if E then print(E) os.exit(1) end
 
 	-- R = read bytes
@@ -321,8 +328,11 @@ local function unzip(path)
 
 	local function S(n) f:seek("cur", n) end
 
-	local function le16() local a, b = R(2):byte(1, 2) return a + b * 256 end
-	local function le32() local a, b, c, d = R(4):byte(1, 4) return a + b * 256 + c * 65536 + d * 16777216 end
+	---Read the next 2 bytes in the file as a 16-bit little endian number
+	local function R16() local a, b = R(2):byte(1, 2) return a + b * 256 end
+
+	---Read the next 4 bytes in the file as a 32-bit little endian number
+	local function R32() local a, b, c, d = R(4):byte(1, 4) return a + b * 256 + c * 65536 + d * 16777216 end
 
 	while true do
 
@@ -340,19 +350,19 @@ local function unzip(path)
 		-- of = output file
 		-- re = remaining bytes
 		-- cr = crc32 checksum
-		local s, v, fl, cm, cr, cs, us, nl, el, fn, os, di, of, re, cr = f:read(4)
+		local s, v, fl, cm, cr, cs, us, nl, el, fn, os, di, of, re = f:read(4)
 		if not s or #s < 4 then break end
 		if s ~= "PK\3\4" then break end
 
-		v , E = le16() if not v  then break end -- version
-		fl, E = le16() if not fl then break end -- flags
-		cm, E = le16() if not cm then break end -- method
+		v , E = R16() if not v  then break end -- version
+		fl, E = R16() if not fl then break end -- flags
+		cm, E = R16() if not cm then break end -- method
 		S(4) -- skip modification time and date
-		cr, E = le32() if not cr then break end -- crc32
-		cs, E = le32() if not cs then break end -- compressed size
-		us, E = le32() if not us then break end -- uncompressed size
-		nl, E = le16() if not nl then break end -- name length
-		el, E = le16() if not el then break end -- extra name length
+		cr, E = R32() if not cr then break end -- crc32
+		cs, E = R32() if not cs then break end -- compressed size
+		us, E = R32() if not us then break end -- uncompressed size
+		nl, E = R16() if not nl then break end -- name length
+		el, E = R16() if not el then break end -- extra name length
 
 		fn, E = R(nl) if not fn then break end -- filename
 		if el > 0 then S(el) end
@@ -361,12 +371,14 @@ local function unzip(path)
 
 		re, cr = cs, 0
 
-		-- reader = read compressed data in chunks
-		local function reader()
+		---Read compressed data in chunks
+		local function RC()
 			if re <= 0 then return nil end
-			local chunk = f:read(math.min(C, re))
-			if chunk then re = re - #chunk end
-			return chunk
+
+			-- c = chunk
+			local c = f:read(math.min(C, re))
+			if c then re = re - #c end
+			return c
 		end
 
 		-- Setup output file
@@ -379,22 +391,21 @@ local function unzip(path)
 		if not of then
 			print(E)
 		else
-			-- writer = write decompressed data and update CRC
-			local function writer(chunk)
-				cr = crc32(chunk, cr)
-				of:write(chunk)
+			---Write decompressed data and update CRC
+			---@param c string The chunk of decompressed data to write to the file
+			local function W(c)
+				cr = crc32(c, cr)
+				of:write(c)
 			end
 
-			if cm == 0 then
-				-- no compression
+			if cm == 0 then -- uncompressed file
 				while re > 0 do
-					local chunk = reader()
-					if not chunk then break end
-					writer(chunk)
+					local c = RC()
+					if not c then break end
+					W(c)
 				end
-			elseif cm == 8 then
-				-- deflate
-				inflate(reader, writer)
+			elseif cm == 8 then -- deflated file
+				inf(RC, W)
 			else
 				print("Unsupported compression")
 			end
