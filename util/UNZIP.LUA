@@ -1,17 +1,30 @@
 #!/usr/bin/env lua
 
 -- nbs = new bit stream
-local function nbs(data)
+local function nbs(reader)
 
+	-- b = buffer
 	-- p = position
 	-- bb = bit buffer
 	-- bc = bit count
-	local p, bb, bc = 1, 0, 0
+	local b, p, bb, bc = "", 1, 0, 0
+
+	local function fill()
+		if p > #b then
+			b = reader()
+			if not b or #b == 0 then return false end
+			p = 1
+		end
+		return true
+	end
 
 	-- nb = need bits
 	local function nb(n)
 		while bc < n do
-			bb = bb + ((data:byte(p) or 0) << bc)
+			if p > #b then
+				if not fill() then error("Unexpected EOF") end
+			end
+			bb = bb + (b:byte(p) << bc)
 			p = p + 1
 			bc = bc + 8
 		end
@@ -28,13 +41,23 @@ local function nbs(data)
 	-- ab = align byte
 	local function ab() bb, bc = 0, 0 end
 
-	-- s = skip
-	local function s(n) p = p + n end
+	-- raw = read raw bytes
+	local function raw(n)
+		ab()
+		local out, got = {}, 0
+		while got < n do
+			if p > #b then
+				if not fill() then error("Unexpected EOF") end
+			end
+			local take = math.min(n - got, #b - p + 1)
+			out[#out+1] = b:sub(p, p + take - 1)
+			p = p + take
+			got = got + take
+		end
+		return table.concat(out)
+	end
 
-	-- TODO: inflate() currently expects bs.p() callable, change that
-	local function gp() return p end
-
-	return { r = rb, a = ab, p = gp, s = s }
+	return { r = rb, a = ab, raw = raw }
 end
 
 -- rv = revbits
@@ -101,22 +124,39 @@ local function rh(bs, h)
 	error("invalid Huffman code")
 end
 
-local function inflate(data)
+local function inflate(reader, writer)
 
 	-- bs = bit stream
-	-- ob = output byte stream
 	-- op = output position
 	-- kg = keep going (in a loop)
-	local bs, ob, op, kg = nbs(data), {}, 0, true
+	-- win = sliding window (32KB circular buffer)
+	-- wp = window pointer
+	-- out = output chunk buffer
+	local bs, op, kg, win, wp, out = nbs(reader), 0, true, {}, 0, {}
+
+	-- flush = write to sink
+	local function flush()
+		if #out > 0 then
+			writer(table.concat(out))
+			out = {}
+		end
+	end
 
 	-- ab = append byte
-	local function ab(byte) op = op + 1 ob[op] = string.char(byte) end
+	local function ab(byte)
+		op = op + 1
+
+		-- Add to output chunk
+		out[#out+1] = string.char(byte)
+		if #out >= 4096 then flush() end
+
+		-- Add to history window
+		win[wp] = byte
+		wp = (wp + 1) % 32768
+	end
 
 	-- as = append string
-	local function as(s)
-		-- push each byte as single-character entry
-		for i = 1, #s do op = op + 1 ob[op] = s:sub(i,i) end
-	end
+	local function as(s) for i = 1, #s do ab(s:byte(i)) end end
 
 	while kg do
 
@@ -126,14 +166,10 @@ local function inflate(data)
 
 		if t == 0 then
 			-- uncompressed block: align, then read LEN, NLEN from byte stream
-			bs.a()
-			local p = bs.p()
-			local function le16(s, i) local a,b = s:byte(i,i+1) return a + b*256 end
-			local len, _ = le16(data, p), le16(data, p + 2)
-			bs.s(4) -- consume LEN and NLEN
-			local s = data:sub(bs.p(), bs.p() + len - 1)
+			local h, len, s = bs.raw(4)
+			len = h:byte(1) + h:byte(2)*256
+			s = bs.raw(len)
 			as(s)
-			bs.s(len)
 
 		elseif t == 1 or t == 2 then
 			local ll, dl, h, d = {}, {}
@@ -235,9 +271,11 @@ local function inflate(data)
 						error("Invalid distance " .. tostring(dv) .. " (outpos=" .. tostring(op) .. ")")
 					end
 
-					-- bi = base index
-					local bi = op - dv
-					for i = 1, l do ab(ob[bi + i]:byte()) end
+					-- Read from window history
+					for _ = 1, l do
+						local p = (wp - dv) % 32768
+						ab(win[p] or 0)
+					end
 				end
 			end
 		else
@@ -247,14 +285,15 @@ local function inflate(data)
 		if f == 1 then kg = false end
 	end
 
-	return table.concat(ob)
+	flush()
 end
 
-local function crc32(s)
+local function crc32(s, c)
 
 	-- x = maximum
 	-- c = crc number
-	local x, c = 0xFFFFFFFF c = x
+	local x = 0xFFFFFFFF
+	c = (c or 0) ~ x
 
 	for i = 1, #s do
 		c = c ~ s:byte(i)
@@ -285,26 +324,6 @@ local function unzip(path)
 	local function le16() local a, b = R(2):byte(1, 2) return a + b * 256 end
 	local function le32() local a, b, c, d = R(4):byte(1, 4) return a + b * 256 + c * 65536 + d * 16777216 end
 
-	-- RB = read n bytes chunked
-	local function RB(n)
-
-		-- p = parts
-		-- g = got
-		-- w = want
-		-- d = data
-		local p, g, w, d = {}, 0
-
-		while g < n do
-			w = math.min(C, n - g)
-			d, E = R(w)
-			if E then return nil, E end
-			p[#p + 1] = d
-			g = g + #d
-		end
-
-		return table.concat(p)
-	end
-
 	while true do
 
 		-- s  = signature
@@ -316,16 +335,19 @@ local function unzip(path)
 		-- us = Uncompressed size
 		-- nl = Length of file name
 		-- el = Extra length in the file name
-		-- cd = A buffer of the files data
 		-- os = The output stream
-		local s, v, fl, cm, ok, cr, cs, us, nl, el, fn, cd, os = f:read(4)
+		-- di = directory
+		-- of = output file
+		-- re = remaining bytes
+		-- cr = crc32 checksum
+		local s, v, fl, cm, cr, cs, us, nl, el, fn, os, di, of, re, cr = f:read(4)
 		if not s or #s < 4 then break end
 		if s ~= "PK\3\4" then break end
 
-		v, E = le16() if not v then break end -- version
+		v , E = le16() if not v  then break end -- version
 		fl, E = le16() if not fl then break end -- flags
 		cm, E = le16() if not cm then break end -- method
-		S(4) -- modification time and date
+		S(4) -- skip modification time and date
 		cr, E = le32() if not cr then break end -- crc32
 		cs, E = le32() if not cs then break end -- compressed size
 		us, E = le32() if not us then break end -- uncompressed size
@@ -337,47 +359,49 @@ local function unzip(path)
 
 		print("Extracting: " .. fn)
 
-		cd, E = RB(cs)
-		if not cd then
-			print(e)
-			break
+		re, cr = cs, 0
+
+		-- reader = read compressed data in chunks
+		local function reader()
+			if re <= 0 then return nil end
+			local chunk = f:read(math.min(C, re))
+			if chunk then re = re - #chunk end
+			return chunk
 		end
 
-		if cm == 0 then
-			-- no compression
-			os = cd
-		elseif cm == 8 then
-			-- deflate (still in-memory per entry)
-			os = inflate(cd)
+		-- Setup output file
+		di = fn:match("(.+)/")
+		if di and os.execute then
+			os.execute('mkdir -p "'.. di ..'"')
+		end
+
+		of, E = io.open(fn, "wb")
+		if not of then
+			print(E)
 		else
-			-- unsupported compression
-			print("Unsupported compression")
-		end
+			-- writer = write decompressed data and update CRC
+			local function writer(chunk)
+				cr = crc32(chunk, cr)
+				of:write(chunk)
+			end
 
-		if os then
-			if #os ~= us then print("Size mismatch") end
-
-			-- c = actual crc32
-			-- di = directory
-			-- of = output file
-			local c, di, of = crc32(os)
-
-			if cr ~= c then print("CRC mismatch") end
-
-			di = fn:match("(.+)/")
-			if di then
-				if os.execute then
-					-- portable make dir (POSIX/Windows-friendly-ish)
-					os.execute('mkdir -p "'.. di ..'"')
+			if cm == 0 then
+				-- no compression
+				while re > 0 do
+					local chunk = reader()
+					if not chunk then break end
+					writer(chunk)
 				end
+			elseif cm == 8 then
+				-- deflate
+				inflate(reader, writer)
+			else
+				print("Unsupported compression")
 			end
 
-			of, E = io.open(fn, "wb")
-			if not of then
-				print(E)
-			else
-				of:write(os) of:close()
-			end
+			of:close()
+
+			if cr ~= cr then print("CRC mismatch") end
 		end
 	end
 
