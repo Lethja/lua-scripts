@@ -45,27 +45,7 @@ local function nbs(r)
 	---Align byte
 	local function ab() bb, bc = 0, 0 end
 
-	---Read raw bytes
-	local function ra(n)
-		ab()
-
-		-- o = out
-		-- g = got
-		-- t = take
-		local o, g, t = {}, 0
-		while g < n do
-			if p > #b then
-				if not F() then error("Unexpected EOF") end
-			end
-			t = math.min(n - g, #b - p + 1)
-			o[#o +1] = b:sub(p, p + t - 1)
-			p = p + t
-			g = g + t
-		end
-		return table.concat(o)
-	end
-
-	return { r = rb, a = ab, raw = ra }
+	return { r = rb, a = ab }
 end
 
 ---Reverse bits
