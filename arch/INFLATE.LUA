@@ -1,115 +1,53 @@
----New bit stream
-local function nbs(r)
-
-	-- b = buffer
-	-- p = position
-	-- bb = bit buffer
-	-- bc = bit count
-	local b, p, bb, bc = "", 1, 0, 0
-
-	---Fill
-	local function F()
-		if p > #b then
-			b = r()
-			if b or #b ~= 0 then p = 1 else return 0 end
-		end
-		return 1
-	end
-
-	---Need bits
-	local function nb(n)
-		while bc < n do
-			if p > #b then
-				if F()==0 then error("!EOF",0) end
-			end
-			bb = bb + (b:byte(p) << bc)
-			p = p + 1
-			bc = bc + 8
-		end
-	end
-
-	---Read bits
-	local function rb(n)
-		nb(n)
-		local v = bb & ((1 << n) - 1)
-		bb, bc = (bb >> n), bc - n
-		return v
-	end
-
-	---Align byte
-	local function ab() bb, bc = 0, 0 end
-
-	return { r = rb, a = ab }
-end
-
----Reverse bits
-local function rv(x, bits)
-	local y = 0
-
-	for _ = 1, bits do
-		y = (y << 1) | (x & 1)
-		x = x >> 1
-	end
-
-	return y
-end
-
----Make huffman
-local function mh(lengths)
-
-	-- m = maximum length
-	-- c = counts
-	-- o = code
-	-- n = next code
-	-- t = tab
-	local m, c, o, n, t = 0, {}, 0, {}, {}
-
-	for _, len in ipairs(lengths) do
-		if len > 0 then
-			c[len] = (c[len] or 0) + 1
-			if len > m then m = len end
-		end
-	end
-
-	-- b = bits
-	for b = 1, m do
-		o = (o + (c[b - 1] or 0)) << 1
-		n[b] = o
-	end
-
-	-- s = sym
-	-- l = len
-	for s, l in ipairs(lengths) do
-		if l > 0 then
-			local r = rv(n[l], l)
-			t[r] = { sym = s - 1, len = l }
-			n[l] = n[l] + 1
-		end
-	end
-
-	return { tab = t, max = m }
-end
-
----Read huffman
-local function rh(bs, h)
-
-	-- c = code
-	local c = 0
-
-	-- l = len
-	for l = 1, h.max do
-		c = c | (bs.r(1) << (l - 1))
-		local e = h.tab[c & ((1 << l) - 1)]
-		if e and e.len == l then return e.sym end
-	end
-
-	error("!Huffman", 0)
-end
-
----Inflate a deflated file inside a zip
+---Inflate (a.k.a decompress) a deflated file inside a zip
 ---@param r function The reader function
 ---@param w function The writer function
 function inflate(r, w)
+
+	---New bit stream
+	function nbs(rf)
+
+		-- b = buffer
+		-- p = position
+		-- bb = bit buffer
+		-- bc = bit count
+		local b, p, bb, bc = "", 1, 0, 0
+
+		---Need bits
+		function nb(n)
+			while bc < n do
+				if p > #b then
+
+					---Fill
+					function I()
+						if p > #b then
+							b = rf()
+							if b or #b ~= 0 then p = 1 else return 0 end
+						end
+						return 1
+					end
+
+					if I()==0 then error("!EOF",0) end
+				end
+
+				bb = bb + (b:byte(p) << bc)
+				p = p + 1
+				bc = bc + 8
+			end
+		end
+
+		---Read bits
+		function rb(n)
+			nb(n)
+			local v = bb & ((1 << n) - 1)
+			bb, bc = (bb >> n), bc - n
+			return v
+		end
+
+		---Align byte
+		function ab() bb, bc = 0, 0 end
+
+		return { r = rb, a = ab }
+	end
 
 	-- bs = bit stream
 	-- op = output position
@@ -117,10 +55,10 @@ function inflate(r, w)
 	-- sw = sliding window (32KB circular buffer)
 	-- wp = window pointer
 	-- o  = output chunk buffer
-	local bs, op, kg, sw, wp, o = nbs(r), 0, true, {}, 0, {}
+	local bs, op, kg, sw, wp, o = nbs(r), 0, 1, {}, 0, {}
 
 	---Flush all unwritten data to the output file
-	local function F()
+	function F()
 		if #o > 0 then
 			w(table.concat(o))
 			o = {}
@@ -128,7 +66,7 @@ function inflate(r, w)
 	end
 
 	---Append byte
-	local function ab(byte)
+	function ab(byte)
 		op = op + 1
 
 		-- Add to output chunk
@@ -140,10 +78,73 @@ function inflate(r, w)
 		wp = (wp + 1) % 32768
 	end
 
-	---Append string
-	local function as(s) for i = 1, #s do ab(s:byte(i)) end end
+	---Make huffman
+	function mh(lengths)
 
-	while kg do
+		-- m = maximum length
+		-- c = counts
+		-- o = code
+		-- n = next code
+		-- t = tab
+		local m, c, o, n, t = 0, {}, 0, {}, {}
+
+		for _, len in ipairs(lengths) do
+			if len > 0 then
+				c[len] = (c[len] or 0) + 1
+				if len > m then m = len end
+			end
+		end
+
+		-- b = bits
+		for b = 1, m do
+			o = (o + (c[b - 1] or 0)) << 1
+			n[b] = o
+		end
+
+		---Reverse bits
+		function rv(x, bits)
+			local y = 0
+
+			for _ = 1, bits do
+				y = (y << 1) | (x & 1)
+				x = x >> 1
+			end
+
+			return y
+		end
+
+		-- s = sym
+		-- l = len
+		for s, l in ipairs(lengths) do
+			if l > 0 then
+				t[rv(n[l], l)] = { sym = s - 1, len = l }
+				n[l] = n[l] + 1
+			end
+		end
+
+		return { tab = t, max = m }
+	end
+
+	---Read huffman
+	function rh(h)
+
+		-- c = code
+		local c = 0
+
+		-- l = len
+		for l = 1, h.max do
+			c = c | (bs.r(1) << (l - 1))
+			local e = h.tab[c & ((1 << l) - 1)]
+			if e and e.len == l then return e.sym end
+		end
+
+		error("!Huffman", 0)
+	end
+
+	---Append string
+	function as(s) for i = 1, #s do ab(s:byte(i)) end end
+
+	while kg > 0 do
 
 		-- f = final
 		-- t = block type
@@ -151,9 +152,9 @@ function inflate(r, w)
 
 		if t == 0 then
 			-- uncompressed block: align, then read LEN, NLEN from byte stream
-			local h, len, s = bs.ra(4)
-			len = h:byte(1) + h:byte(2)*256
-			s = bs.ra(len)
+			local h, l, s = bs.ra(4)
+			l = h:byte(1) + h:byte(2)*256
+			s = bs.ra(l)
 			as(s)
 
 		elseif t == 1 or t == 2 then
@@ -186,7 +187,7 @@ function inflate(r, w)
 				while #le < hl + hd do
 
 					-- s = sym
-					local s = rh(bs, ch)
+					local s = rh(ch)
 
 					if s <= 15 then
 						le[#le + 1] = s
@@ -225,7 +226,7 @@ function inflate(r, w)
 
 			while true do
 				-- s = sym
-				local s = rh(bs, h)
+				local s = rh(h)
 				if s < 256 then
 					ab(s)
 				elseif s == 256 then
@@ -246,7 +247,7 @@ function inflate(r, w)
 
 					b, x = e[1], e[2]
 					a = x > 0 and bs.r(x) or 0
-					l, ds = b + a, rh(bs, d)
+					l, ds = b + a, rh(d)
 					de = dix[ds + 1]
 					db, dx = de[1], de[2]
 					da = dx > 0 and bs.r(dx) or 0
@@ -267,7 +268,7 @@ function inflate(r, w)
 			error("!Unsupported", 0)
 		end
 
-		if f == 1 then kg = false end
+		if f == 1 then kg = 0 end
 	end
 
 	F()
