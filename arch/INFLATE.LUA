@@ -85,10 +85,10 @@ function inflate(r, w)
 
 		-- m = maximum length
 		-- c = counts
-		-- o = code
+		-- d = code
 		-- n = next code
 		-- t = tab
-		local m, c, o, n, t = 0, {}, 0, {}, {}
+		local m, c, d, n, t = 0, {}, 0, {}, {}
 
 		for _, len in ipairs(lengths) do
 			if len > 0 then
@@ -99,8 +99,8 @@ function inflate(r, w)
 
 		-- b = bits
 		for b = 1, m do
-			o = (o + (c[b - 1] or 0)) << 1
-			n[b] = o
+			d = (d + (c[b - 1] or 0)) << 1
+			n[b] = d
 		end
 
 		---Reverse bits
