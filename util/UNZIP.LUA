@@ -1,5 +1,8 @@
 #!/usr/bin/env lua
 
+---Halt and catch fire if E is set
+local function D() if E then error(E, 0) end end
+
 ---New bit stream
 local function nbs(r)
 
@@ -48,15 +51,16 @@ local function nbs(r)
 
 		-- o = out
 		-- g = got
-		local o, g = {}, 0
+		-- t = take
+		local o, g, t = {}, 0
 		while g < n do
 			if p > #b then
 				if not F() then error("Unexpected EOF") end
 			end
-			local take = math.min(n - g, #b - p + 1)
-			o[#o +1] = b:sub(p, p + take - 1)
-			p = p + take
-			g = g + take
+			t = math.min(n - g, #b - p + 1)
+			o[#o +1] = b:sub(p, p + t - 1)
+			p = p + t
+			g = g + t
 		end
 		return table.concat(o)
 	end
@@ -316,13 +320,11 @@ local function unzip(p)
 	-- f = file
 	local C, f = 4096
 
-	f, E = io.open(p, "rb")
-	if E then print(E) os.exit(1) end
+	f, E = io.open(p, "rb") D()
 
 	-- R = read bytes
 	local function R(n)
-		local s, E = f:read(n)
-		if E then print(E) os.exit(1) end
+		local s, E = f:read(n) D()
 		return s
 	end
 
@@ -354,17 +356,17 @@ local function unzip(p)
 		if not s or #s < 4 then break end
 		if s ~= "PK\3\4" then break end
 
-		v , E = R16() if not v  then break end -- version
-		fl, E = R16() if not fl then break end -- flags
-		cm, E = R16() if not cm then break end -- method
+		v , E = R16() D() -- version
+		fl, E = R16() D() -- flags
+		cm, E = R16() D() -- method
 		S(4) -- skip modification time and date
-		cr, E = R32() if not cr then break end -- crc32
-		cs, E = R32() if not cs then break end -- compressed size
-		us, E = R32() if not us then break end -- uncompressed size
-		nl, E = R16() if not nl then break end -- name length
-		el, E = R16() if not el then break end -- extra name length
+		cr, E = R32() D() -- crc32
+		cs, E = R32() D() -- compressed size
+		us, E = R32() D() -- uncompressed size
+		nl, E = R16() D() -- name length
+		el, E = R16() D() -- extra name length
 
-		fn, E = R(nl) if not fn then break end -- filename
+		fn, E = R(nl) D() -- filename
 		if el > 0 then S(el) end
 
 		print("Extracting: " .. fn)
@@ -387,10 +389,9 @@ local function unzip(p)
 			os.execute('mkdir -p "'.. di ..'"')
 		end
 
-		of, E = io.open(fn, "wb")
-		if not of then
-			print(E)
-		else
+		of, E = io.open(fn, "wb") D()
+
+		if of then
 			---Write decompressed data and update CRC
 			---@param c string The chunk of decompressed data to write to the file
 			local function W(c)
@@ -401,8 +402,7 @@ local function unzip(p)
 			if cm == 0 then -- uncompressed file
 				while re > 0 do
 					local c = RC()
-					if not c then break end
-					W(c)
+					if c then W(c) else break end
 				end
 			elseif cm == 8 then -- deflated file
 				inf(RC, W)
