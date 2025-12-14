@@ -1,10 +1,10 @@
 #!/usr/bin/env lua
 
 ---Halt and catch fire if E is set
-local function D() if E then error(E, 0) end end
+function D() if E then error(E, 0) end end
 
 ---New bit stream
-local function nbs(r)
+function nbs(r)
 
 	-- b = buffer
 	-- p = position
@@ -16,17 +16,16 @@ local function nbs(r)
 	local function F()
 		if p > #b then
 			b = r()
-			if not b or #b == 0 then return false end
-			p = 1
+			if b or #b ~= 0 then p = 1 else return 0 end
 		end
-		return true
+		return 1
 	end
 
 	---Need bits
 	local function nb(n)
 		while bc < n do
 			if p > #b then
-				if not F() then error("Unexpected EOF") end
+				if F()==0 then error("!EOF",0) end
 			end
 			bb = bb + (b:byte(p) << bc)
 			p = p + 1
@@ -49,7 +48,7 @@ local function nbs(r)
 end
 
 ---Reverse bits
-local function rv(x, bits)
+function rv(x, bits)
 	local y = 0
 
 	for _ = 1, bits do
@@ -61,7 +60,7 @@ local function rv(x, bits)
 end
 
 ---Make huffman
-local function mh(lengths)
+function mh(lengths)
 
 	-- m = maximum length
 	-- c = counts
@@ -97,7 +96,7 @@ local function mh(lengths)
 end
 
 ---Read huffman
-local function rh(bs, h)
+function rh(bs, h)
 
 	-- c = code
 	local c = 0
@@ -109,13 +108,13 @@ local function rh(bs, h)
 		if e and e.len == l then return e.sym end
 	end
 
-	error("invalid Huffman code")
+	error("!Huffman", 0)
 end
 
 ---Inflate a deflated file inside a zip
 ---@param r function The reader function
 ---@param w function The writer function
-local function inf(r, w)
+function inf(r, w)
 
 	-- bs = bit stream
 	-- op = output position
@@ -259,7 +258,7 @@ local function inf(r, w)
 					dv = db + da
 
 					if dv <= 0 or dv > op then
-						error("Invalid distance " .. tostring(dv) .. " (outpos=" .. tostring(op) .. ")")
+						error("!Distance", 0)
 					end
 
 					-- Read from window history
@@ -270,7 +269,7 @@ local function inf(r, w)
 				end
 			end
 		else
-			error("Unsupported block type: "..tostring(t))
+			error("!Unsupported", 0)
 		end
 
 		if f == 1 then kg = false end
@@ -279,7 +278,7 @@ local function inf(r, w)
 	F()
 end
 
-local function crc32(s, c)
+function crc32(s, c)
 
 	-- x = maximum
 	-- c = crc number
@@ -294,7 +293,7 @@ local function crc32(s, c)
 	return c ~ x
 end
 
-local function unzip(p)
+function unzip(p)
 
 	-- C = read chunk size
 	-- f = file
@@ -387,12 +386,12 @@ local function unzip(p)
 			elseif cm == 8 then -- deflated file
 				inf(RC, W)
 			else
-				print("Unsupported compression")
+				print("!Unsupported")
 			end
 
 			of:close()
 
-			if cr ~= cr then print("CRC mismatch") end
+			if cr ~= cr then print("!CRC") end
 		end
 	end
 
