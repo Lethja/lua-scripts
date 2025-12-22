@@ -48,7 +48,7 @@ function unzip(p)
 		-- s  = signature
 		-- v  = version needed
 		-- fl = flags
-		-- cm = method
+		-- cm = Compression method
 		-- cr = Expected crc32 checksum
 		-- cs = Compressed size
 		-- us = Uncompressed size
@@ -114,7 +114,7 @@ function unzip(p)
 			elseif cm == 8 and pcall(require, "INFLATE") then -- deflated file
 				inflate(RC, W)
 			else
-				print("!Unsupported")
+				print("!Unsupported compression method " .. cm)
 			end
 
 			of:close()
