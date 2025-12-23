@@ -111,8 +111,8 @@ function unzip(p)
 					local c = RC()
 					if c then W(c) else break end
 				end
-			elseif cm == 8 and pcall(require, "INFLATE") then -- deflated file
-				inflate(RC, W)
+			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
+				inflate(RC, W, cm == 9)
 			else
 				print("!Unsupported compression method " .. cm)
 			end

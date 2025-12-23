@@ -3,7 +3,10 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---Inflate (a.k.a decompress) a deflated file inside a zip
 ---@param r function The reader function
 ---@param w function The writer function
-function inflate(r, w)
+---@param z boolean Is this deflate64
+function inflate(r, w, z)
+
+	local Z = z and 65536 or 32768
 
 	---New bit stream
 	function nbs(rf)
@@ -77,7 +80,7 @@ function inflate(r, w)
 
 		-- Add to history window
 		sw[wp] = byte
-		wp = (wp + 1) % 32768
+		wp = (wp + 1) % Z
 	end
 
 	---Make huffman
@@ -223,8 +226,24 @@ function inflate(r, w)
 				{1,0},{2,0},{3,0},{4,0},{5,1},{7,1},{9,2},{13,2},{17,3},{25,3},
 				{33,4},{49,4},{65,5},{97,5},{129,6},{193,6},{257,7},{385,7},{513,8},
 				{769,8},{1025,9},{1537,9},{2049,10},{3073,10},{4097,11},{6145,11},
-				{8193,12},{12289,12},{16385,13},{24577,13}
+				{8193,12},{12289,12},{16385,13},{24577,13},
+				-- Inflate64 below
+				{32769,13},{49153,13},{65537,14},{98305,14},{131073,15},
+				{196609,15},{262145,16},
+				{393217,16},{524289,17},{786433,17},{1048577,18},{1572865,18},
+    			{2097153,19},{3145729,19},{4194305,20},{6291457,20},{8388609,21},
+				{12582913,21},{16777217,22},{25165825,22},{33554433,23},
+				{50331649,23},{67108865,24},{100663297,24},{134217729,25},
+				{201326593,25},{268435457,26},{402653185,26},{536870913,27},
+				{805306369,27},{1073741825,28},{1610612737,28}
 			}
+
+			-- Strip addition table values out when not in inflate64 mode
+			if not z then
+				for _ = 1, 32 do
+					table.remove(dix)
+				end
+			end
 
 			while true do
 				-- s = sym
@@ -256,12 +275,12 @@ function inflate(r, w)
 					dv = db + da
 
 					if dv <= 0 or dv > op then
-						error("!Distance", 0)
+						print("!Distance", dv, Z, op) os.exit(1)
 					end
 
 					-- Read from window history
 					for _ = 1, l do
-						local p = (wp - dv) % 32768
+						local p = (wp - dv) % Z
 						ab(sw[p] or 0)
 					end
 				end
