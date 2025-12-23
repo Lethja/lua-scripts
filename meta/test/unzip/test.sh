@@ -6,34 +6,38 @@ R=0
 
 # Inflate test
 TEST="$SCRIPT store"
+DATA=$(readlink -f $(which $INTERP))
 
 # Store a binary file in a zip
-cp `which $INTERP` .
-SRC="$(sha256sum ./$INTERP)"
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
 if [ -f test.zip ]; then rm "test.zip"; fi
-zip test.zip -Z store "./$INTERP"
+zip test.zip -Z store "./$DATA"
 
 # Extract and compare
-rm "./$INTERP"
+rm "./$DATA"
 $INTERP $SCRIPT test.zip
-DST="$(sha256sum ./$INTERP)"
+DST="$(sha256sum ./$DATA)"
 if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
-rm "./$INTERP" test.zip
+rm "./$DATA" test.zip
 
 # Inflate test
 TEST="$SCRIPT inflate"
+DATA=$(readlink -f $(which $INTERP))
 
 # Compress a binary file with deflate
-cp `which $INTERP` .
-SRC="$(sha256sum ./$INTERP)"
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
 if [ -f test.zip ]; then rm "test.zip"; fi
-zip test.zip -Z deflate "./$INTERP"
+zip test.zip -Z deflate "./$DATA"
 
 # Extract and compare
-rm "./$INTERP"
+rm "./$DATA"
 $INTERP $SCRIPT test.zip
-DST="$(sha256sum ./$INTERP)"
+DST="$(sha256sum ./$DATA)"
 if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
-rm "./$INTERP" test.zip
+rm "./$DATA" test.zip
 
 exit $R
