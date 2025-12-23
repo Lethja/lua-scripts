@@ -10,7 +10,7 @@ jobs:
       - name: Install Unit test dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y lua5.4 mtools
+          sudo apt-get install -y lua5.4 mtools p7zip-full
 
       - uses: actions/checkout@v4
 
