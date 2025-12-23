@@ -9,6 +9,8 @@ function inflate(r, w, z)
 	local Z = z and 65536 or 32768
 
 	---New bit stream
+	---@param rf function The reader function that returns a string of raw bytes
+	---@return table A table full of functions to advance the bitstream (LSB first)
 	function nbs(rf)
 
 		-- b = buffer
@@ -17,7 +19,8 @@ function inflate(r, w, z)
 		-- bc = bit count
 		local b, p, bb, bc = "", 1, 0, 0
 
-		---Need bits
+		---Ensure at least the requested amount of bits are available in the stream, refilling from the byte stream if needed
+		---@param n number The number of bits to have available in the bitstream
 		function nb(n)
 			while bc < n do
 				if p > #b then
@@ -40,7 +43,9 @@ function inflate(r, w, z)
 			end
 		end
 
-		---Read bits
+		---Read a certain number of bits from the bitstream
+		---@param n number The amount of bits to read
+		---@return number The bits that where read
 		function rb(n)
 			nb(n)
 			local v = bb & ((1 << n) - 1)
@@ -48,9 +53,11 @@ function inflate(r, w, z)
 			return v
 		end
 
-		---Align byte
+		---Discard pending bits and align to the next byte boundary
 		function ab() bb, bc = 0, 0 end
 
+		-- return.r = read bits
+		-- return.a = align to byte
 		return { r = rb, a = ab }
 	end
 
