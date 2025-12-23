@@ -162,12 +162,18 @@ function inflate(r, w, z)
 		-- t = block type
 		local f, t = bs.r(1), bs.r(2)
 
-		if t == 0 then
-			-- uncompressed block: align, then read LEN, NLEN from byte stream
-			local h, l, s = bs.r(4)
-			l = h:byte(1) + h:byte(2)*256
-			s = bs.r(l)
-			as(s)
+		if t == 0 then -- uncompressed block
+
+			-- lo = lower bits of 16-bit value
+			-- hi = higher bits of 16-bit value
+			--  l = length of value
+			local lo, hi, l
+			bs.a() -- align (disregard remaining bits)
+			lo, hi = bs.r(8), bs.r(8) -- read length
+			l = lo + hi * 256 -- calculate length
+			lo, hi = bs.r(8), bs.r(8) -- read n-length
+			if (l ~ (lo + hi * 256)) ~= 0xFFFF then error("stored block LEN/NLEN mismatch", 0) end
+			for _ = 1, l do ab(bs.r(8)) end -- copy raw data
 
 		elseif t == 1 or t == 2 then
 			local ll, dl, h, d = {}, {}
