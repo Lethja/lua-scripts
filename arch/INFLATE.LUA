@@ -157,9 +157,9 @@ function inflate(r, w, z)
 
 		if t == 0 then
 			-- uncompressed block: align, then read LEN, NLEN from byte stream
-			local h, l, s = bs.ra(4)
+			local h, l, s = bs.r(4)
 			l = h:byte(1) + h:byte(2)*256
-			s = bs.ra(l)
+			s = bs.r(l)
 			as(s)
 
 		elseif t == 1 or t == 2 then
