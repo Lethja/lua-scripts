@@ -40,6 +40,24 @@ DST="$(sha256sum ./$DATA)"
 if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
 rm "./$DATA" test.zip
 
+# Inflate uncompressed
+TEST="$SCRIPT inflate uncompressed"
+DATA=$(readlink -f $(which $INTERP))
+
+# Compress a binary file with deflate uncompressed generator
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
+if [ -f test.zip ]; then rm "test.zip"; fi
+cat "./$DATA" | ./genzip1.py "$DATA" > "test.zip"
+
+# Extract and compare
+rm "./$DATA"
+$INTERP $SCRIPT test.zip
+DST="$(sha256sum ./$DATA)"
+if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
+rm "./$DATA" test.zip
+
 # Inflate64 test
 TEST="$SCRIPT inflate64"
 DATA=$(readlink -f $(which $INTERP))
