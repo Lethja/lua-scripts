@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import struct
 import sys
 import zlib
@@ -7,6 +8,7 @@ import zlib
 def create_zip():
     filename = sys.argv[1].encode() if len(sys.argv) > 1 else b"test.txt"
     content = sys.stdin.buffer.read()
+    deflate64 = os.environ.get('DEFLATE64', False)
     if len(content) <= 0:
         content = b"Test"
 
@@ -35,13 +37,13 @@ def create_zip():
     # --- 2. Construct ZIP Headers ---
 
     # Common Values
-    # Version needed: 2.0 (20)
+    # Version needed: 2.0 (or 2.1 on deflate64)
     # Flags: 0
-    # Compression Method: 8 (Deflate)
+    # Compression Method: 8 (or 9 for deflate64)
     # Time/Date: 0 (for simplicity)
-    ver = 20
+    ver = deflate64 and 21 or 20
     flags = 0
-    method = 8
+    method = deflate64 and 9 or 8
 
     # A. Local File Header
     # Signature (4s) = PK\x03\x04
