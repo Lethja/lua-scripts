@@ -13,26 +13,37 @@ def create_zip():
         content = b"Test"
 
     # --- 1. Create the Raw Deflate Stream (Stored Block) ---
-    # We are faking "compression" by creating a valid Deflate stream
-    # that just wraps raw bytes.
-    # Header Byte: 0x01
-    #   Bit 0 = 1 (BFINAL, this is the last block)
-    #   Bits 1-2 = 00 (BTYPE, stored/uncompressed)
-    # LEN: 2 bytes, Little Endian length of data
-    # NLEN: 2 bytes, Little Endian one's complement of length
+    # We must split data into 65535 byte chunks because the Deflate
+    # "Stored" block length header is only 16-bit.
+    compressed_data = b""
+    offset = 0
+    total_len = len(content)
 
-    length = len(content)
-    nlen = (~length) & 0xFFFF
+    while True:
+        chunk_size = min(total_len - offset, 65535)
+        is_final = (offset + chunk_size) == total_len
 
-    # Construct the payload
-    # <HH means two unsigned short integers (2 bytes) in Little Endian
-    deflate_header = b'\x01' + struct.pack('<HH', length, nlen)
-    compressed_data = deflate_header + content
+        chunk = content[offset : offset + chunk_size]
+
+        # Header Byte:
+        # Bit 0: BFINAL (1 if last block, 0 if not)
+        # Bits 1-2: BTYPE (00 = stored)
+        header_byte = 0x01 if is_final else 0x00
+
+        nlen = (~chunk_size) & 0xFFFF
+
+        # <BHH = Byte, UShort, UShort
+        block_header = struct.pack('<BHH', header_byte, chunk_size, nlen)
+        compressed_data += block_header + chunk
+
+        offset += chunk_size
+        if is_final:
+            break
 
     # Calculate Metadata
     crc = zlib.crc32(content)
     compressed_size = len(compressed_data)
-    uncompressed_size = length
+    uncompressed_size = len(content) # Use total length here
 
     # --- 2. Construct ZIP Headers ---
 
