@@ -59,22 +59,22 @@ if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R
 rm "./$DATA" test.zip
 
 # TODO: This test fails but only on Ubuntu. Is 7z broken in that distribution?
-## Inflate64 test
-#TEST="$SCRIPT inflate64"
-#DATA=$(readlink -f $(which $INTERP))
-#
-## Compress a binary file with deflate64
-#cp $DATA .
-#DATA=$(basename $DATA)
-#SRC="$(sha256sum ./$DATA)"
-#if [ -f test.zip ]; then rm "test.zip"; fi
-#7z a -tzip -m0=deflate64 test.zip "./$DATA"
-#
-## Extract and compare
-#rm "./$DATA"
-#$INTERP $SCRIPT test.zip
-#DST="$(sha256sum ./$DATA)"
-#if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
-#rm "./$DATA" test.zip
+# Inflate64 test
+TEST="$SCRIPT inflate64"
+DATA=$(readlink -f $(which $INTERP))
+
+# Compress a binary file with deflate64
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
+if [ -f test.zip ]; then rm "test.zip"; fi
+7z a -tzip -m0=deflate64 test.zip "./$DATA"
+
+# Extract and compare
+rm "./$DATA"
+$INTERP $SCRIPT test.zip
+DST="$(sha256sum ./$DATA)"
+if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
+rm "./$DATA" test.zip
 
 exit $R
