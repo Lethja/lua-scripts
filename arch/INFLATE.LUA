@@ -301,20 +301,23 @@ function inflate(r, w, z)
 
 					b, x = e[1], e[2]
 					a = x > 0 and bs.r(x) or 0
-					l, ds = b + a, rh(d)
-					de = dix[ds + 1]
-					db, dx = de[1], de[2]
-					da = dx > 0 and bs.r(dx) or 0
-					dv = db + da
+					l = b + a
+					if d.max > 0 and #d.tab > 0 then
+						ds = rh(d)
+						de = dix[ds + 1]
+						db, dx = de[1], de[2]
+						da = dx > 0 and bs.r(dx) or 0
+						dv = db + da
 
-					if dv <= 0 or dv > op then
-						print("!Distance", dv, Z, op) os.exit(1)
-					end
+						if dv <= 0 or dv > op then
+							print("!Distance", dv, Z, op) os.exit(1)
+						end
 
-					-- Read from window history
-					for _ = 1, l do
-						local p = (wp - dv) % Z
-						ab(sw[p] or 0)
+						-- Read from window history
+						for _ = 1, l do
+							local p = (wp - dv) % Z
+							ab(sw[p] or 0)
+						end
 					end
 				end
 			end
