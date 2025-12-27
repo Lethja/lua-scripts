@@ -14,6 +14,7 @@ The scripts are split into the following folders:
 
 | Folder Name      | Description                                                                                                                |
 |------------------|----------------------------------------------------------------------------------------------------------------------------|
+| [arch](./arch)   | Scripts for extracting archive formats and compressed files                                                                |
 | [dev](./dev)     | Scripts focused on software development an maintenance                                                                     |
 | [edu](./edu)     | Simple scripts intended for those learning how to write Lua                                                                |
 | [games](./games) | Simple text based games                                                                                                    |
