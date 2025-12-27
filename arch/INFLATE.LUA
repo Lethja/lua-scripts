@@ -196,7 +196,7 @@ function inflate(r, w, z)
 				-- cl = clen
 				-- le = lens
 				-- ch = chuff
-				local hl, hd, hc, od, cl, le, ch = bs.r(5) + 257, (z and bs.r(6) or bs.r(5)) + 1, bs.r(4) + 4, {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15}, {}, {}
+				local hl, hd, hc, od, cl, le, ch = bs.r(5) + 257, bs.r(5) + 1, bs.r(4) + 4, {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15}, {}, {}
 
 				for i = 1, 19 do cl[i] = 0 end
 				for i = 1, hc do cl[od[i] + 1] = bs.r(3) end
