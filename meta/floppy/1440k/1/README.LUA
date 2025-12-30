@@ -1,1 +1,1 @@
-../../160k/1/README.LUA
+../../../../edu/HELLO.LUA
