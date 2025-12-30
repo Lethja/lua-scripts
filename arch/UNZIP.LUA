@@ -126,8 +126,14 @@ function unzip(p)
 	f:close()
 end
 
-if #arg < 1 then
-	print((arg[-1] or "?") .. " " .. (arg[0] or "?") .. " file[.zip]")
-	os.exit(1)
+if arg[-1] then
+	if #arg < 1 then
+		print((arg[-1] or "?") .. " " .. (arg[0] or "?") .. " file[.zip]")
+		os.exit(1)
+	end
+	unzip(arg[1])
+else
+	-- The script was loaded by an interactive intepreter (most likely to swap disks).
+	if not pcall(require, "INFLATE") then print("No inflate support") end
+	print("Insert disk with zipfile and type unzip('zipfile') to begin...")
 end
-unzip(arg[1])
