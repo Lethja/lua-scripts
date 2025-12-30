@@ -132,8 +132,6 @@ if arg[-1] then
 		os.exit(1)
 	end
 	unzip(arg[1])
-else
-	-- The script was loaded by an interactive intepreter (most likely to swap disks).
-	if not pcall(require, "INFLATE") then print("No inflate support") end
-	print("Insert disk with zipfile and type unzip('zipfile') to begin...")
 end
+
+-- If arg[-1] == nil then the script was loaded by an interactive intepreter (most likely to swap disks).
