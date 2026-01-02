@@ -66,7 +66,7 @@ function inflate(r, w, z)
 	-- kg = keep going (in a loop)
 	-- sw = sliding window (32/64KB buffer)
 	-- wp = window pointer
-	-- o  = output chunk buffer
+	--  o = output chunk buffer
 	local bs, op, kg, sw, wp, o = nbs(r), 0, 1, {}, 0, {}
 
 	---Flush all unwritten data to the output file
@@ -173,7 +173,13 @@ function inflate(r, w, z)
 			for _ = 1, l do ab(bs.r(8)) end -- copy raw data
 
 		elseif t == 1 or t == 2 then
+
+			-- ll = literal length
+			-- dl = distance length
+			--  h = huffman
+			--  d = distances
 			local ll, dl, h, d = {}, {}
+
 			if t == 1 then
 				-- fixed Huffman
 				for _ = 0, 143 do ll[#ll+1] = 8 end
@@ -231,8 +237,10 @@ function inflate(r, w, z)
 			"\1\0\0\0\2\0\0\0\3\0\0\0\4\0\0\0\5\0\0\0\7\0\0\0\9\0\0\0\13\0\0\0\17\0\0\0\25\0\0\0\33\0\0\0\49\0\0\0\65\0\0\0\97\0\0\0\129\0\0\0\193\0\0\0\1\1\0\0\129\1\0\0\1\2\0\0\1\3\0\0\1\4\0\0\1\6\0\0\1\8\0\0\1\12\0\0\1\16\0\0\1\24\0\0\1\32\0\0\1\48\0\0\1\64\0\0\1\96\0\0\1\128\0\0\1\192\0\0\1\0\1\0\1\128\1\0\1\0\2\0\1\128\2\0\1\0\4\0\1\128\4\0\1\0\8\0\1\128\8\0\1\0\16\0\1\128\16\0\1\0\32\0\1\128\32\0\1\0\64\0\1\128\64\0\1\0\128\0\1\128\128\0\1\0\0\1\1\128\0\1\1\0\0\2\1\128\0\2\1\0\0\4\1\128\0\4\1\0\0\8\1\128\0\8\1\0\0\16\1\128\0\16\1\0\0\32\1\128\0\32\1\0\0\64\1\128\0\64\1\0\0\128\1\128\0\128\1\0\0\0\192"
 
 			while true do
+
 				-- s = sym
 				local s = rh(h)
+
 				if s < 256 then
 					ab(s)
 				elseif s == 256 then
@@ -244,9 +252,9 @@ function inflate(r, w, z)
 					-- a = add
 					-- l = length
 					local li, b, x, l = (s - 257) * 2 + 1
+
 					b, x = lex:byte(li), lex:byte(li + 1)
 					if s == 285 then b = 258 end
-
 					l = b + (x > 0 and bs.r(x) or 0)
 
 					if d.max > 0 and #d.tab > 0 then
