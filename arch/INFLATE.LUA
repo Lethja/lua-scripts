@@ -42,7 +42,10 @@ function inflate(r, w, z)
 	---@return number The bits that where read
 	function rb(n)
 		nb(n)
+
+		-- v = extracted bit value
 		local v = bb & ((1 << n) - 1)
+
 		bb, bc = (bb >> n), bc - n
 		return v
 	end
@@ -133,7 +136,10 @@ function inflate(r, w, z)
 		-- l = len
 		for l = 1, h.max do
 			c = c | (rb(1) << (l - 1))
+
+			-- e = entry
 			local e = h.tab[c & ((1 << l) - 1)]
+
 			if e and e.len == l then return e.sym end
 		end
 
@@ -152,7 +158,8 @@ function inflate(r, w, z)
 			-- hi = higher bits of 16-bit value
 			--  l = length of value
 			local lo, hi, l
-			bb, bc = 0, 0 -- align (disregard remaining bits)
+
+			bb, bc = 0, 0 -- align and disregard remaining bits
 			lo, hi = rb(8), rb(8) -- read length
 			l = lo + hi * 256 -- calculate length
 			lo, hi = rb(8), rb(8) -- read n-length
@@ -194,19 +201,21 @@ function inflate(r, w, z)
 
 				while #le < hl + hd do
 
-					-- s = sym
-					local s = rh(ch)
+					-- s = symbol
+					-- x = repeat count
+					-- l = code length
+					local s, x, l = rh(ch)
 
 					if s <= 15 then
 						le[#le + 1] = s
 					elseif s == 16 then
-						local x, l = rb(2) + 3, le[#le]
+						x, l = rb(2) + 3, le[#le]
 						for _ = 1, x do le[#le + 1] = l end
 					elseif s == 17 then
-						local x = rb(3) + 3
+						x = rb(3) + 3
 						for _ = 1, x do le[#le + 1] = 0 end
 					elseif s == 18 then
-						local x = rb(7) + 11
+						x = rb(7) + 11
 						for _ = 1, x do le[#le + 1] = 0 end
 					end
 				end
@@ -225,7 +234,7 @@ function inflate(r, w, z)
 
 			while true do
 
-				-- s = sym
+				-- s = symbol
 				local s = rh(h)
 
 				if s < 256 then
