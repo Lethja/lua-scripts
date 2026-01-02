@@ -13,22 +13,22 @@ function inflate(r, w, z)
 	-- bc = bit count
 	local Z, b, p, bb, bc = z and 65536 or 32768, "", 1, 0, 0
 
-	---Ensure at least the requested amount of bits are available in the stream, refilling from the byte stream if needed
-	---@param n number The number of bits to have available in the bitstream
+	---Internal buffer refill function.
+	---@return number Zero on error, otherwise the buffer has been filled.
+	function fi()
+		if p > #b then
+			b = r()
+			if b and #b ~= 0 then p = 1 else return 0 end
+		end
+		return 1
+	end
+
+	---Ensures at least the requested amount of bits are available in the bitstream, refilling from the reader if needed.
+	---@param n number The number of bits required.
 	function nb(n)
 		while bc < n do
 			if p > #b then
-
-				---Fill
-				function I()
-					if p > #b then
-						b = r()
-						if b or #b ~= 0 then p = 1 else return 0 end
-					end
-					return 1
-				end
-
-				if I()==0 then error("!EOF",0) end
+				if fi() == 0 then error("!EOF",0) end
 			end
 
 			bb = bb + (b:byte(p) << bc)
@@ -37,9 +37,9 @@ function inflate(r, w, z)
 		end
 	end
 
-	---Read a certain number of bits from the bitstream
-	---@param n number The amount of bits to read
-	---@return number The bits that where read
+	---Reads a specific number of bits from the bitstream.
+	---@param n number The number of bits to read.
+	---@return number The decoded bit value.
 	function rb(n)
 		nb(n)
 
@@ -58,27 +58,30 @@ function inflate(r, w, z)
 	local op, kg, sw, wp, o = 0, 1, {}, 0, {}
 
 	---Flush all unwritten data to the output file
-	function F()
+	function fl()
 		if #o > 0 then
 			w(table.concat(o))
 			o = {}
 		end
 	end
 
-	---Append byte
-	function ab(byte)
+	---Appends a decoded byte to the output buffer and updates the sliding window history.
+	---@param by number The byte value (0-255) to append.
+	function ab(by)
 		op = op + 1
 
 		-- Add to output chunk
-		o[#o + 1] = string.char(byte)
-		if #o >= 4096 then F() end
+		o[#o + 1] = string.char(by)
+		if #o >= 4096 then fl() end
 
 		-- Add to history window
-		sw[wp] = byte
+		sw[wp] = by
 		wp = (wp + 1) % Z
 	end
 
-	---Make huffman
+	---Constructs a canonical Huffman decoding table from a list of code lengths.
+	---@param ls table An array where the index is the symbol and the value is its bit length.
+	---@return table A Huffman object containing the lookup table (`tab`) and the maximum code length (`max`).
 	function mh(ls)
 
 		-- m = maximum length
@@ -103,7 +106,10 @@ function inflate(r, w, z)
 			n[i] = d
 		end
 
-		---Reverse bits
+		---Reverses the order of the lower `bi` bits in an integer.
+		---@param x number The integer value containing the bits to reverse.
+		---@param bi number The number of bits to process.
+		---@return number The bit-reversed value.
 		function rv(x, bi)
 			local y = 0
 
@@ -127,7 +133,9 @@ function inflate(r, w, z)
 		return { tab = t, max = m }
 	end
 
-	---Read huffman
+	---Decodes the next symbol from the bitstream using the provided Huffman table.
+	---@param h table The Huffman table object containing the lookup table (`tab`) and maximum bit length (`max`).
+	---@return number The decoded symbol value.
 	function rh(h)
 
 		-- c = code
@@ -290,5 +298,5 @@ function inflate(r, w, z)
 		if f == 1 then kg = 0 end
 	end
 
-	F()
+	fl()
 end
