@@ -208,8 +208,7 @@ function inflate(r, w, z)
 						le[#le + 1] = s
 					elseif s == 16 then
 						local x, l = bs.r(2) + 3, le[#le]
-						for _ = 1, x do le[#le + 1] = l
-						end
+						for _ = 1, x do le[#le + 1] = l end
 					elseif s == 17 then
 						local x = bs.r(3) + 3
 						for _ = 1, x do le[#le + 1] = 0 end
