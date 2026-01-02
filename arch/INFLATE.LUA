@@ -6,68 +6,53 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---@param z boolean Is this deflate64
 function inflate(r, w, z)
 
-	local Z = z and 65536 or 32768
+	--  Z = size of sliding window
+	--  b = buffer
+	--  p = position
+	-- bb = bit buffer
+	-- bc = bit count
+	local Z, b, p, bb, bc = z and 65536 or 32768, "", 1, 0, 0
 
-	---New bit stream
-	---@param rf function The reader function that returns a string of raw bytes
-	---@return table A table full of functions to advance the bitstream (LSB first)
-	function nbs(rf)
+	---Ensure at least the requested amount of bits are available in the stream, refilling from the byte stream if needed
+	---@param n number The number of bits to have available in the bitstream
+	function nb(n)
+		while bc < n do
+			if p > #b then
 
-		-- b = buffer
-		-- p = position
-		-- bb = bit buffer
-		-- bc = bit count
-		local b, p, bb, bc = "", 1, 0, 0
-
-		---Ensure at least the requested amount of bits are available in the stream, refilling from the byte stream if needed
-		---@param n number The number of bits to have available in the bitstream
-		function nb(n)
-			while bc < n do
-				if p > #b then
-
-					---Fill
-					function I()
-						if p > #b then
-							b = rf()
-							if b or #b ~= 0 then p = 1 else return 0 end
-						end
-						return 1
+				---Fill
+				function I()
+					if p > #b then
+						b = r()
+						if b or #b ~= 0 then p = 1 else return 0 end
 					end
-
-					if I()==0 then error("!EOF",0) end
+					return 1
 				end
 
-				bb = bb + (b:byte(p) << bc)
-				p = p + 1
-				bc = bc + 8
+				if I()==0 then error("!EOF",0) end
 			end
+
+			bb = bb + (b:byte(p) << bc)
+			p = p + 1
+			bc = bc + 8
 		end
-
-		---Read a certain number of bits from the bitstream
-		---@param n number The amount of bits to read
-		---@return number The bits that where read
-		function rb(n)
-			nb(n)
-			local v = bb & ((1 << n) - 1)
-			bb, bc = (bb >> n), bc - n
-			return v
-		end
-
-		---Discard pending bits and align to the next byte boundary
-		function ab() bb, bc = 0, 0 end
-
-		-- return.r = read bits
-		-- return.a = align to byte
-		return { r = rb, a = ab }
 	end
 
-	-- bs = bit stream
+	---Read a certain number of bits from the bitstream
+	---@param n number The amount of bits to read
+	---@return number The bits that where read
+	function rb(n)
+		nb(n)
+		local v = bb & ((1 << n) - 1)
+		bb, bc = (bb >> n), bc - n
+		return v
+	end
+
 	-- op = output position
 	-- kg = keep going (in a loop)
 	-- sw = sliding window (32/64KB buffer)
 	-- wp = window pointer
 	--  o = output chunk buffer
-	local bs, op, kg, sw, wp, o = nbs(r), 0, 1, {}, 0, {}
+	local op, kg, sw, wp, o = 0, 1, {}, 0, {}
 
 	---Flush all unwritten data to the output file
 	function F()
@@ -82,7 +67,7 @@ function inflate(r, w, z)
 		op = op + 1
 
 		-- Add to output chunk
-		o[#o +1] = string.char(byte)
+		o[#o + 1] = string.char(byte)
 		if #o >= 4096 then F() end
 
 		-- Add to history window
@@ -91,7 +76,7 @@ function inflate(r, w, z)
 	end
 
 	---Make huffman
-	function mh(lengths)
+	function mh(ls)
 
 		-- m = maximum length
 		-- c = counts
@@ -100,24 +85,26 @@ function inflate(r, w, z)
 		-- t = tab
 		local m, c, d, n, t = 0, {}, 0, {}, {}
 
-		for _, len in ipairs(lengths) do
-			if len > 0 then
-				c[len] = (c[len] or 0) + 1
-				if len > m then m = len end
+		-- l = length
+		for _, l in ipairs(ls) do
+			if l > 0 then
+				c[l] = (c[l] or 0) + 1
+				if l > m then m = l
+				end
 			end
 		end
 
-		-- b = bits
-		for b = 1, m do
-			d = (d + (c[b - 1] or 0)) << 1
-			n[b] = d
+		-- i = bits
+		for i = 1, m do
+			d = (d + (c[i - 1] or 0)) << 1
+			n[i] = d
 		end
 
 		---Reverse bits
-		function rv(x, bits)
+		function rv(x, bi)
 			local y = 0
 
-			for _ = 1, bits do
+			for _ = 1, bi do
 				y = (y << 1) | (x & 1)
 				x = x >> 1
 			end
@@ -127,7 +114,7 @@ function inflate(r, w, z)
 
 		-- s = sym
 		-- l = len
-		for s, l in ipairs(lengths) do
+		for s, l in ipairs(ls) do
 			if l > 0 then
 				t[rv(n[l], l)] = { sym = s - 1, len = l }
 				n[l] = n[l] + 1
@@ -145,7 +132,7 @@ function inflate(r, w, z)
 
 		-- l = len
 		for l = 1, h.max do
-			c = c | (bs.r(1) << (l - 1))
+			c = c | (rb(1) << (l - 1))
 			local e = h.tab[c & ((1 << l) - 1)]
 			if e and e.len == l then return e.sym end
 		end
@@ -157,7 +144,7 @@ function inflate(r, w, z)
 
 		-- f = final
 		-- t = block type
-		local f, t = bs.r(1), bs.r(2)
+		local f, t = rb(1), rb(2)
 
 		if t == 0 then -- uncompressed block
 
@@ -165,12 +152,12 @@ function inflate(r, w, z)
 			-- hi = higher bits of 16-bit value
 			--  l = length of value
 			local lo, hi, l
-			bs.a() -- align (disregard remaining bits)
-			lo, hi = bs.r(8), bs.r(8) -- read length
+			bb, bc = 0, 0 -- align (disregard remaining bits)
+			lo, hi = rb(8), rb(8) -- read length
 			l = lo + hi * 256 -- calculate length
-			lo, hi = bs.r(8), bs.r(8) -- read n-length
+			lo, hi = rb(8), rb(8) -- read n-length
 			if (l ~ (lo + hi * 256)) ~= 0xFFFF then error("stored block LEN/NLEN mismatch", 0) end
-			for _ = 1, l do ab(bs.r(8)) end -- copy raw data
+			for _ = 1, l do ab(rb(8)) end -- copy raw data
 
 		elseif t == 1 or t == 2 then
 
@@ -182,12 +169,12 @@ function inflate(r, w, z)
 
 			if t == 1 then
 				-- fixed Huffman
-				for _ = 0, 143 do ll[#ll+1] = 8 end
-				for _ = 144, 255 do ll[#ll+1] = 9 end
-				for _ = 256, 279 do ll[#ll+1] = 7 end
-				for _ = 280, 287 do ll[#ll+1] = 8 end
+				for _ = 0, 143 do ll[#ll + 1] = 8 end
+				for _ = 144, 255 do ll[#ll + 1] = 9 end
+				for _ = 256, 279 do ll[#ll + 1] = 7 end
+				for _ = 280, 287 do ll[#ll + 1] = 8 end
 				h = mh(ll)
-				for _ = 0, 31 do dl[#dl+1] = 5 end
+				for _ = 0, 31 do dl[#dl + 1] = 5 end
 				d = mh(dl)
 			else
 				-- dynamic Huffman
@@ -199,10 +186,10 @@ function inflate(r, w, z)
 				-- cl = clen
 				-- le = lens
 				-- ch = chuff
-				local hl, hd, hc, od, cl, le, ch = bs.r(5) + 257, bs.r(5) + 1, bs.r(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}, {}
+				local hl, hd, hc, od, cl, le, ch = rb(5) + 257, rb(5) + 1, rb(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}, {}
 
 				for i = 1, 19 do cl[i] = 0 end
-				for i = 1, hc do cl[od:byte(i) + 1] = bs.r(3) end
+				for i = 1, hc do cl[od:byte(i) + 1] = rb(3) end
 				ch = mh(cl)
 
 				while #le < hl + hd do
@@ -213,13 +200,13 @@ function inflate(r, w, z)
 					if s <= 15 then
 						le[#le + 1] = s
 					elseif s == 16 then
-						local x, l = bs.r(2) + 3, le[#le]
+						local x, l = rb(2) + 3, le[#le]
 						for _ = 1, x do le[#le + 1] = l end
 					elseif s == 17 then
-						local x = bs.r(3) + 3
+						local x = rb(3) + 3
 						for _ = 1, x do le[#le + 1] = 0 end
 					elseif s == 18 then
-						local x = bs.r(7) + 11
+						local x = rb(7) + 11
 						for _ = 1, x do le[#le + 1] = 0 end
 					end
 				end
@@ -247,15 +234,16 @@ function inflate(r, w, z)
 					break
 				else
 
-					-- b = base
-					-- x = extra
-					-- a = add
-					-- l = length
-					local li, b, x, l = (s - 257) * 2 + 1
+					-- li = length index
+					-- ba = base
+					--  x = extra
+					--  a = add
+					--  l = length
+					local li, ba, x, l = (s - 257) * 2 + 1
 
-					b, x = lex:byte(li), lex:byte(li + 1)
-					if s == 285 then b = 258 end
-					l = b + (x > 0 and bs.r(x) or 0)
+					ba, x = lex:byte(li), lex:byte(li + 1)
+					if s == 285 then ba = 258 end
+					l = ba + (x > 0 and rb(x) or 0)
 
 					if d.max > 0 and #d.tab > 0 then
 
@@ -268,7 +256,7 @@ function inflate(r, w, z)
 						-- Extract 32-bit unsigned little-endian integer (I4) and extra bits byte
 						db = string.unpack("<I4", dib, ds * 4 + 1)
 						dx = dix:byte(ds + 1)
-						dv = db + (dx > 0 and bs.r(dx) or 0)
+						dv = db + (dx > 0 and rb(dx) or 0)
 
 						if dv <= 0 or dv > op then
 							print("!Distance", dv, Z, op) os.exit(1)
@@ -276,8 +264,11 @@ function inflate(r, w, z)
 
 						-- Read from window history
 						for _ = 1, l do
-							local p = (wp - dv) % Z
-							ab(sw[p] or 0)
+
+							-- hi = history
+							local hi = (wp - dv) % Z
+
+							ab(sw[hi] or 0)
 						end
 					end
 				end
