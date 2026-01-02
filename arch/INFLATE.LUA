@@ -64,7 +64,7 @@ function inflate(r, w, z)
 	-- bs = bit stream
 	-- op = output position
 	-- kg = keep going (in a loop)
-	-- sw = sliding window (32KB circular buffer)
+	-- sw = sliding window (32/64KB buffer)
 	-- wp = window pointer
 	-- o  = output chunk buffer
 	local bs, op, kg, sw, wp, o = nbs(r), 0, 1, {}, 0, {}
@@ -153,9 +153,6 @@ function inflate(r, w, z)
 		error("!Huffman", 0)
 	end
 
-	---Append string
-	function as(s) for i = 1, #s do ab(s:byte(i)) end end
-
 	while kg > 0 do
 
 		-- f = final
@@ -196,10 +193,10 @@ function inflate(r, w, z)
 				-- cl = clen
 				-- le = lens
 				-- ch = chuff
-				local hl, hd, hc, od, cl, le, ch = bs.r(5) + 257, bs.r(5) + 1, bs.r(4) + 4, {16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15}, {}, {}
+				local hl, hd, hc, od, cl, le, ch = bs.r(5) + 257, bs.r(5) + 1, bs.r(4) + 4, "\016\017\018\000\008\007\009\006\010\005\011\004\012\003\013\002\014\001\015", {}, {}
 
 				for i = 1, 19 do cl[i] = 0 end
-				for i = 1, hc do cl[od[i] + 1] = bs.r(3) end
+				for i = 1, hc do cl[od:byte(i) + 1] = bs.r(3) end
 				ch = mh(cl)
 
 				while #le < hl + hd do
