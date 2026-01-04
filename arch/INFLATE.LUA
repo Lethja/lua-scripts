@@ -52,31 +52,21 @@ function inflate(r, w, z)
 
 	-- op = output position
 	-- kg = keep going (in a loop)
-	-- sw = sliding window (32/64KB buffer)
-	-- wp = window pointer
-	--  o = output chunk buffer
-	local op, kg, sw, wp, o = 0, 1, {}, 0, {}
-
-	---Flush all unwritten data to the output file
-	function fl()
-		if #o > 0 then
-			w(table.concat(o))
-			o = {}
-		end
-	end
+	--  o = output buffer that also acts like a sliding window
+	local op, kg, o = 0, 1, ""
 
 	---Appends a decoded byte to the output buffer and updates the sliding window history.
 	---@param by number The byte value (0-255) to append.
 	function ab(by)
 		op = op + 1
+		o = o .. string.char(by)
+		if #o > Z + 4096 then -- Flush what has exceeded the sliding window
 
-		-- Add to output chunk
-		o[#o + 1] = string.char(by)
-		if #o >= 4096 then fl() end
-
-		-- Add to history window
-		sw[wp] = by
-		wp = (wp + 1) % Z
+			-- c = cut
+			local c = #o - Z
+			w(o:sub(1, c))
+			o = o:sub(c + 1)
+		end
 	end
 
 	---Constructs a canonical Huffman decoding table from a list of code lengths.
@@ -280,13 +270,12 @@ function inflate(r, w, z)
 							print("!Distance", dv, Z, op) os.exit(1)
 						end
 
-						-- Read from window history
+						-- Read from output history
 						for _ = 1, l do
 
-							-- hi = history
-							local hi = (wp - dv) % Z
-
-							ab(sw[hi] or 0)
+							-- c = character
+							local c = o:sub(#o - dv + 1, #o - dv + 1)
+							ab(c:byte())
 						end
 					end
 				end
@@ -298,5 +287,7 @@ function inflate(r, w, z)
 		if f == 1 then kg = 0 end
 	end
 
-	fl()
+	if #o > 0 then -- End of file, flush remaining output to disk
+		w(o) o = ""
+	end
 end
