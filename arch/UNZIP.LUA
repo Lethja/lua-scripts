@@ -44,12 +44,6 @@ function unzip(p)
 
 	local function S(n) f:seek("cur", n) end
 
-	---Read the next 2 bytes in the file as a 16-bit little endian number
-	local function R16() local a, b = R(2):byte(1, 2) return a + b * 256 end
-
-	---Read the next 4 bytes in the file as a 32-bit little endian number
-	local function R32() local a, b, c, d = R(4):byte(1, 4) return a + b * 256 + c * 65536 + d * 16777216 end
-
 	while true do
 
 		--  s = Signature
@@ -65,19 +59,9 @@ function unzip(p)
 		-- of = Output file
 		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
-		local s, v, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(4)
-		if not s or #s < 4 then break end
-		if s ~= "PK\3\4" then break end
-
-		v , E = R16() D() -- version
-		fl, E = R16() D() -- flags
-		cm, E = R16() D() -- method
-		S(4) -- skip modification time and date
-		ec, E = R32() D() -- crc32
-		cs, E = R32() D() -- compressed size
-		us, E = R32() D() -- uncompressed size
-		nl, E = R16() D() -- name length
-		el, E = R16() D() -- extra name length
+		local s, v, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(30)
+		if not s or #s < 30 or not s:find("^PK\3\4") then break end
+		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
 		fn, E = R(nl) D() -- filename
 		if el > 0 then S(el) end
