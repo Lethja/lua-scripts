@@ -6,12 +6,25 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---@param z boolean Is this deflate64
 function inflate(r, w, z)
 
-	--  Z = size of sliding window
-	--  b = buffer
-	--  p = position
-	-- bb = bit buffer
-	-- bc = bit count
-	local Z, b, p, bb, bc = z and 65536 or 32768, "", 1, 0, 0
+	--   Z = size of sliding window
+	--   b = buffer
+	--   p = position
+	--  bb = bit buffer
+	--  bc = bit count
+	--  op = output position
+	--  kg = keep going (in a loop)
+	--   o = list of 4096-byte strings that make up the output and sliding window
+	--  oc = current string being built
+	--  os = total size of all strings in 'o'
+	-- lex = length base & extra bits (pairs of bytes)
+	-- dix = distance extra bits (1 byte per entry)
+	-- dib = distance base (packed 32-bit LE)
+	local Z, b, p, bb, bc, op, kg, o, oc, os, lex, dix, dib = z and 65536 or 32768, "", 1, 0, 0, 0, 1, {}, "", 0,
+	-- lex, dix, dib packed strings
+
+	"\3\0\4\0\5\0\6\0\7\0\8\0\9\0\10\0\11\1\13\1\15\1\17\1\19\2\23\2\27\2\31\2\35\3\43\3\51\3\59\3\67\4\83\4\99\4\115\4\131\5\163\5\195\5\227\5\2\0",
+	"\0\0\0\0\1\1\2\2\3\3\4\4\5\5\6\6\7\7\8\8\9\9\10\10\11\11\12\12\13\13\14\14\15\15\16\16\17\17\18\18\19\19\20\20\21\21\22\22\23\23\24\24\25\25\26\26\27\27\28\28\29\29\30\30",
+	"\1\0\0\0\2\0\0\0\3\0\0\0\4\0\0\0\5\0\0\0\7\0\0\0\9\0\0\0\13\0\0\0\17\0\0\0\25\0\0\0\33\0\0\0\49\0\0\0\65\0\0\0\97\0\0\0\129\0\0\0\193\0\0\0\1\1\0\0\129\1\0\0\1\2\0\0\1\3\0\0\1\4\0\0\1\6\0\0\1\8\0\0\1\12\0\0\1\16\0\0\1\24\0\0\1\32\0\0\1\48\0\0\1\64\0\0\1\96\0\0\1\128\0\0\1\192\0\0\1\0\1\0\1\128\1\0\1\0\2\0\1\128\2\0\1\0\4\0\1\128\4\0\1\0\8\0\1\128\8\0\1\0\16\0\1\128\16\0\1\0\32\0\1\128\32\0\1\0\64\0\1\128\64\0\1\0\128\0\1\128\128\0\1\0\0\1\1\128\0\1\1\0\0\2\1\128\0\2\1\0\0\4\1\128\0\4\1\0\0\8\1\128\0\8\1\0\0\16\1\128\0\16\1\0\0\32\1\128\0\32\1\0\0\64\1\128\0\64\1\0\0\128\1\128\0\128\1\0\0\0\192"
 
 	---Internal buffer refill function.
 	---@return number Zero on error, otherwise the buffer has been filled.
@@ -50,22 +63,25 @@ function inflate(r, w, z)
 		return v
 	end
 
-	-- op = output position
-	-- kg = keep going (in a loop)
-	--  o = output buffer that also acts like a sliding window
-	local op, kg, o = 0, 1, ""
-
 	---Appends a decoded byte to the output buffer and updates the sliding window history.
 	---@param by number The byte value (0-255) to append.
 	function ab(by)
 		op = op + 1
-		o = o .. string.char(by)
-		if #o > Z + 4096 then -- Flush what has exceeded the sliding window
+		oc = oc .. string.char(by)
 
-			-- c = cut
-			local c = #o - Z
-			w(o:sub(1, c))
-			o = o:sub(c + 1)
+		if #oc >= 4096 then
+			o[#o + 1] = oc
+			os = os + #oc
+			oc = ""
+
+			-- If window exceeds limit, write and discard the oldest chunk
+			if os > Z then
+
+				-- ot = old table of 4096 bytes that have shifted out of the sliding window
+				local ot = table.remove(o, 1)
+				os = os - #ot
+				w(ot)
+			end
 		end
 	end
 
@@ -143,15 +159,6 @@ function inflate(r, w, z)
 
 		error("!Huffman", 0)
 	end
-
-	-- lex = length base & extra bits (pairs of bytes)
-	-- dix = distance extra bits (1 byte per entry)
-	-- dib = distance base (packed 32-bit LE)
-	local lex, dix, dib =
-
-	"\3\0\4\0\5\0\6\0\7\0\8\0\9\0\10\0\11\1\13\1\15\1\17\1\19\2\23\2\27\2\31\2\35\3\43\3\51\3\59\3\67\4\83\4\99\4\115\4\131\5\163\5\195\5\227\5\2\0",
-	"\0\0\0\0\1\1\2\2\3\3\4\4\5\5\6\6\7\7\8\8\9\9\10\10\11\11\12\12\13\13\14\14\15\15\16\16\17\17\18\18\19\19\20\20\21\21\22\22\23\23\24\24\25\25\26\26\27\27\28\28\29\29\30\30",
-	"\1\0\0\0\2\0\0\0\3\0\0\0\4\0\0\0\5\0\0\0\7\0\0\0\9\0\0\0\13\0\0\0\17\0\0\0\25\0\0\0\33\0\0\0\49\0\0\0\65\0\0\0\97\0\0\0\129\0\0\0\193\0\0\0\1\1\0\0\129\1\0\0\1\2\0\0\1\3\0\0\1\4\0\0\1\6\0\0\1\8\0\0\1\12\0\0\1\16\0\0\1\24\0\0\1\32\0\0\1\48\0\0\1\64\0\0\1\96\0\0\1\128\0\0\1\192\0\0\1\0\1\0\1\128\1\0\1\0\2\0\1\128\2\0\1\0\4\0\1\128\4\0\1\0\8\0\1\128\8\0\1\0\16\0\1\128\16\0\1\0\32\0\1\128\32\0\1\0\64\0\1\128\64\0\1\0\128\0\1\128\128\0\1\0\0\1\1\128\0\1\1\0\0\2\1\128\0\2\1\0\0\4\1\128\0\4\1\0\0\8\1\128\0\8\1\0\0\16\1\128\0\16\1\0\0\32\1\128\0\32\1\0\0\64\1\128\0\64\1\0\0\128\1\128\0\128\1\0\0\0\192"
 
 	while kg > 0 do
 
@@ -274,7 +281,26 @@ function inflate(r, w, z)
 						for _ = 1, l do
 
 							-- c = character
-							local c = o:sub(#o - dv + 1, #o - dv + 1)
+							local c
+
+							if dv <= #oc then -- Target is in the currently building chunk
+								c = oc:sub(#oc - dv + 1, #oc - dv + 1)
+							else -- Target is in one of the completed chunks
+
+								-- of = offset
+								-- co = coff
+								local of, co = os - (dv - #oc), 0
+								for i = 1, #o do
+									if of < co + #o[i] then
+
+										-- n = position
+										local n = of - co + 1
+										c = o[i]:sub(n, n)
+										break
+									end
+									co = co + #o[i]
+								end
+							end
 							ab(c:byte())
 						end
 					end
@@ -287,7 +313,7 @@ function inflate(r, w, z)
 		if f == 1 then kg = 0 end
 	end
 
-	if #o > 0 then -- End of file, flush remaining output to disk
-		w(o) o = ""
-	end
+	-- Flush remaining data
+	for i = 1, #o do w(o[i]) end
+	if #oc > 0 then w(oc) end
 end
