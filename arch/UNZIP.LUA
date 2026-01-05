@@ -49,7 +49,7 @@ function unzip(p)
 		-- v  = version needed
 		-- fl = flags
 		-- cm = Compression method
-		-- cr = Expected crc32 checksum
+		-- cr = Calculated crc32 checksum
 		-- cs = Compressed size
 		-- us = Uncompressed size
 		-- nl = Length of file name
@@ -58,8 +58,8 @@ function unzip(p)
 		-- di = directory
 		-- of = output file
 		-- re = remaining bytes
-		-- cr = crc32 checksum
-		local s, v, fl, cm, cr, cs, us, nl, el, fn, os, di, of, re = f:read(4)
+		-- ec = Expected crc32 checksum
+		local s, v, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(4)
 		if not s or #s < 4 then break end
 		if s ~= "PK\3\4" then break end
 
@@ -67,7 +67,7 @@ function unzip(p)
 		fl, E = R16() D() -- flags
 		cm, E = R16() D() -- method
 		S(4) -- skip modification time and date
-		cr, E = R32() D() -- crc32
+		ec, E = R32() D() -- crc32
 		cs, E = R32() D() -- compressed size
 		us, E = R32() D() -- uncompressed size
 		nl, E = R16() D() -- name length
@@ -78,7 +78,7 @@ function unzip(p)
 
 		print("Extracting: " .. fn)
 
-		re, cr = cs, 0
+		re = cs
 
 		---Read compressed data in chunks
 		local function RC()
@@ -119,7 +119,7 @@ function unzip(p)
 
 			of:close()
 
-			if cr ~= cr then print("!CRC") end
+			if ec ~= cr then print("!CRC") end
 		end
 	end
 
