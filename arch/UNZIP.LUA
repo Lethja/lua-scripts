@@ -6,6 +6,10 @@ LIB=1
 ---Halt and catch fire if E is set
 function D() if E then error(E, 0) end end
 
+---Calculates the CRC32 checksum of a string.
+---@param s string The input string to process.
+---@param c number An initial CRC32 value for incremental calculation if applicable
+---@return number The calculated 32-bit CRC32 checksum.
 function crc32(s, c)
 
 	-- x = maximum
@@ -21,6 +25,9 @@ function crc32(s, c)
 	return c ~ x
 end
 
+---Unzips a ZIP archive file, extracting its contents to the local directory.
+---Always supports store. Deflate is supported if the 'INFLATE' module can be found.
+---@param p string The path to the ZIP file to extract.
 function unzip(p)
 
 	-- C = read chunk size
@@ -45,19 +52,18 @@ function unzip(p)
 
 	while true do
 
-		-- s  = signature
-		-- v  = version needed
-		-- fl = flags
+		--  s = Signature
+		--  v = Version needed
+		-- fl = Flags
 		-- cm = Compression method
 		-- cr = Calculated crc32 checksum
 		-- cs = Compressed size
 		-- us = Uncompressed size
 		-- nl = Length of file name
 		-- el = Extra length in the file name
-		-- os = The output stream
-		-- di = directory
-		-- of = output file
-		-- re = remaining bytes
+		-- di = Directory
+		-- of = Output file
+		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
 		local s, v, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(4)
 		if not s or #s < 4 then break end
@@ -93,6 +99,7 @@ function unzip(p)
 		-- Setup output file
 		di = fn:match("(.+)/")
 		if di and os.execute then
+			--TODO: DOS friendly version
 			os.execute('mkdir -p "'.. di ..'"')
 		end
 
@@ -134,4 +141,4 @@ if arg[-1] then
 	unzip(arg[1])
 end
 
--- If arg[-1] == nil then the script was loaded by an interactive intepreter (most likely to swap disks).
+-- If arg[-1] == nil then the script was loaded by an interactive interpreter (most likely to swap disks).
