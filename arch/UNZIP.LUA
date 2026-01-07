@@ -126,12 +126,63 @@ function unzip(z, d)
 	f:close()
 end
 
+---Parses command line arguments for specific flags and returns their values followed by remaining args.
+---@param f string A string of flag characters (e.g., "dv")
+---@return any ... The values of the requested flags, then any remaining arguments.
+function flags(f)
+
+	-- v = Values
+	-- r = Remaining
+	-- s = Skipped
+	-- k = Keys
+	-- l = Loop interator
+	local v, r, s, k, l = {}, {}, {}, {}, 1
+
+	for i = 1, #f do
+		k[i] = f:sub(i, i)
+		v[i] = false
+	end
+
+	while l <= #arg do
+
+		-- m = matches
+		local m = false
+		if not s[l] then
+			for j = 1, #k do
+				if arg[l]:find("^-" .. k[j]) then
+					s[l] = true
+					l = l + 1
+					if #arg[l] > 2 then
+						v[j] = arg[l + 1] or ""
+						s[l + 1] = true
+						l = l + 1
+					else
+						v[j] = arg[l]:sub(3)
+					end
+
+					m = true
+					break
+				end
+			end
+		end
+
+		if not m then
+			if not s[l] then table.insert(r, arg[l]) end
+			l = l + 1
+		end
+	end
+
+	return table.unpack(v), table.unpack(r)
+end
+
 if arg[-1] then
 	if #arg < 1 then
-		print((arg[-1] or "?") .. " " .. (arg[0] or "?") .. " file[.zip]")
+		print(arg[-1] .. " " .. (arg[0] or "?") .. "[-d exdir] file[.zip]")
 		os.exit(1)
 	end
-	unzip(arg[1])
+
+	local d, z = flags("d")
+	unzip(z, d)
 end
 
 -- If arg[-1] == nil then the script was loaded by an interactive interpreter (most likely to swap disks).
