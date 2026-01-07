@@ -33,16 +33,7 @@ function unzip(p)
 	-- C = read chunk size
 	-- f = file
 	local C, f = 4096
-
 	f, E = io.open(p, "rb") D()
-
-	-- R = read bytes
-	local function R(n)
-		local s, E = f:read(n) D()
-		return s
-	end
-
-	local function S(n) f:seek("cur", n) end
 
 	while true do
 
@@ -63,15 +54,15 @@ function unzip(p)
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
 		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
-		fn, E = R(nl) D() -- filename
-		if el > 0 then S(el) end
+		fn, E = f:read(nl) D() -- read the filename
+		if el > 0 then f:seek("cur", el) end
 
 		print("Extracting: " .. fn)
 
 		re = cs
 
 		---Read compressed data in chunks
-		local function RC()
+		local function R()
 			if re <= 0 then return nil end
 
 			-- c = chunk
@@ -99,11 +90,11 @@ function unzip(p)
 
 			if cm == 0 then -- uncompressed file
 				while re > 0 do
-					local c = RC()
+					local c = R()
 					if c then W(c) else break end
 				end
 			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
-				inflate(RC, W, cm == 9)
+				inflate(R, W, cm == 9)
 			else
 				print("!Unsupported compression method " .. cm)
 			end
