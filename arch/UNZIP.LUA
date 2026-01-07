@@ -27,18 +27,21 @@ end
 
 ---Unzips a ZIP archive file, extracting its contents to the local directory.
 ---Always supports store. Deflate is supported if the 'INFLATE' module can be found.
----@param p string The path to the ZIP file to extract.
-function unzip(p)
+---@param z string The path to the ZIP file to extract.
+---@param d string The path to extract files to.
+function unzip(z, d)
 
-	-- C = read chunk size
-	-- f = file
-	local C, f = 4096
-	f, E = io.open(p, "rb") D()
+	-- C = Read chunk size
+	-- v = System path seperator/Version needed
+	-- f = File
+	local C, v, f = 4096, package.config:sub(1, 1)
+	f, E = io.open(z, "rb") D()
+	if not d then d = "." end
+	if d:sub(-1) ~= v then d = d .. v end
 
 	while true do
 
 		--  s = Signature
-		--  v = Version needed
 		-- fl = Flags
 		-- cm = Compression method
 		-- cr = Calculated crc32 checksum
@@ -50,16 +53,33 @@ function unzip(p)
 		-- of = Output file
 		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
-		local s, v, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(30)
+		local s, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(30)
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
 		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
 		fn, E = f:read(nl) D() -- read the filename
 		if el > 0 then f:seek("cur", el) end
 
-		print("Extracting: " .. fn)
-
 		re = cs
+
+		---Create all required directories in a path up to a file.
+		---@param p string The path to a file to create directories for.
+		---@return string The created directory.
+		local function M(p)
+
+			-- e = path seperator
+			-- c = current path
+			local e, c, t = package.config:sub(1, 1), "", {}
+
+			p = p:gsub("[\\/]", e) -- Normalize separators to the current OS
+			for i in p:gmatch("[^" .. e .. "]+") do table.insert(t, i) end
+
+			-- i = directory
+			for i = 1, #t - 1 do
+				c = c == "" and t[i] or c .. e .. t[i]
+				os.execute('mkdir "' .. c .. '" ' .. (e == "\\" and '>nul 2>nul' or '>/dev/null 2>&1'))
+			end
+		end
 
 		---Read compressed data in chunks
 		local function R()
@@ -72,13 +92,11 @@ function unzip(p)
 		end
 
 		-- Setup output file
-		di = fn:match("(.+)/")
-		if di and os.execute then
-			--TODO: DOS friendly version
-			os.execute('mkdir -p "'.. di ..'"')
-		end
+		fn = d .. fn -- Prepend target directory
+		M(fn) -- Create directory
 
 		of, E = io.open(fn, "wb") D()
+		print("Extracting: " .. fn)
 
 		if of then
 			---Write decompressed data and update CRC
