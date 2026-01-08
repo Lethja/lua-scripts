@@ -29,7 +29,11 @@ end
 ---Always supports store. Deflate is supported if the 'INFLATE' module can be found.
 ---@param z string The path to the ZIP file to extract.
 ---@param d string The path to extract files to.
-function unzip(z, d)
+---@param l table The list of files in the zip to extract
+---@param x table The list of files in the zip to not extract
+function unzip(z, d, l, x)
+
+	--TODO: implement lists
 
 	-- C = Read chunk size
 	-- v = System path seperator/Version needed
@@ -125,63 +129,43 @@ function unzip(z, d)
 	f:close()
 end
 
----Parses command line arguments for specific flags and returns their values followed by remaining args.
----@param f string A string of flag characters (e.g., "dv")
----@return any ... The values of the requested flags, then any remaining arguments.
-function flags(f)
-
-	-- v = Values
-	-- r = Remaining
-	-- s = Skipped
-	-- k = Keys
-	-- l = Loop interator
-	local v, r, s, k, l = {}, {}, {}, {}, 1
-
-	for i = 1, #f do
-		k[i] = f:sub(i, i)
-		v[i] = false
-	end
-
-	while l <= #arg do
-
-		-- m = matches
-		local m = false
-		if not s[l] then
-			for j = 1, #k do
-				if arg[l]:find("^-" .. k[j]) then
-					s[l] = true
-					l = l + 1
-					if #arg[l] > 2 then
-						v[j] = arg[l + 1] or ""
-						s[l + 1] = true
-						l = l + 1
-					else
-						v[j] = arg[l]:sub(3)
-					end
-
-					m = true
-					break
-				end
-			end
-		end
-
-		if not m then
-			if not s[l] then table.insert(r, arg[l]) end
-			l = l + 1
-		end
-	end
-
-	return table.unpack(v), table.unpack(r)
-end
-
 if arg[-1] then
 	if #arg < 1 then
-		print(arg[-1] .. " " .. (arg[0] or "?") .. "[-d exdir] file[.zip]")
+		print(arg[-1] .. " " .. (arg[0] or "?") .. "file[.zip] [list] [-x xlist] -d exdir")
 		os.exit(1)
 	end
 
-	local d, z = flags("d")
-	unzip(z, d)
+	-- i = Incrementer
+	-- z = Zip file path
+	-- l = List of zip files to extract
+	-- x = List of zip file to skip
+	-- d = Directory path to extract files to
+	-- k = Start index of find
+	-- m = End index of find
+	-- f = The flag character found
+	local i, z, l, x, d, k, m, f = 2, arg[1], {}
+
+	while i <= #arg do
+		k, m = arg[i]:find("^-.*")
+
+		if k then
+			f = arg[i]:sub(2,2)
+			if m == 2 and f == 'x' then
+				x = {}
+			elseif f == 'd' then
+				if m > 2 then d = arg[i]:sub(3) else d = arg[i + 1] or nil i = i + 1 end
+			end
+		else
+			table.insert(x and x or l, arg[i])
+		end
+
+		i = i + 1
+	end
+
+	if #l == 0 then l = nil end
+	if x and #x == 0 then x = nil end
+
+	unzip(z, d, l, x)
 end
 
 -- If arg[-1] == nil then the script was loaded by an interactive interpreter (most likely to swap disks).
