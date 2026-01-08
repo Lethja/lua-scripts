@@ -4,7 +4,7 @@ INTERP=${INTERP:-lua}
 SCRIPT="UNZIP.LUA"
 R=0
 
-# Inflate test
+# Store test
 TEST="$SCRIPT store"
 DATA=$(readlink -f $(which $INTERP))
 
@@ -103,6 +103,31 @@ else
 	DST="$(sha256sum ./$DATA)"
 	if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
 	rm "./$DATA" test.zip
+fi
+
+# mkdir test
+TEST="$SCRIPT mkdir"
+DATA=$(readlink -f $(which $INTERP))
+
+# Store a binary file in a zip
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
+DIR="foo/bar/baz"
+if [ -f test.zip ]; then rm "test.zip"; fi
+zip test.zip -Z store "./$DATA"
+
+# Extract and compare
+rm "./$DATA"
+$INTERP $SCRIPT test.zip -d "$DIR"
+if [ ! -e "$DIR/$DATA" ]; then
+	echo "$TEST: FAIL"; R=$((R+1));
+else
+	mv "$DIR/$DATA" .
+	DST="$(sha256sum ./$DATA)"
+	if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
+	rm "./$DATA" test.zip
+	rmdir -p $DIR
 fi
 
 exit $R
