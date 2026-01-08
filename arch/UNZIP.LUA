@@ -49,11 +49,10 @@ function unzip(z, d)
 		-- us = Uncompressed size
 		-- nl = Length of file name
 		-- el = Extra length in the file name
-		-- di = Directory
 		-- of = Output file
 		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
-		local s, fl, cm, cr, cs, us, nl, el, fn, di, of, re, ec = f:read(30)
+		local s, fl, cm, cr, cs, us, nl, el, fn, of, re, ec = f:read(30)
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
 		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
