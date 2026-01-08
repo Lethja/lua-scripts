@@ -58,4 +58,51 @@ DST="$(sha256sum ./$DATA)"
 if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
 rm "./$DATA" test.zip
 
+# List test
+TEST="$SCRIPT list"
+DATA=$(readlink -f $(which $INTERP))
+
+# Compress a binary file with deflate64
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
+if [ -f test.zip ]; then rm "test.zip"; fi
+cp ./$DATA ./ALT
+zip test.zip -Z store "./$DATA" "./ALT"
+
+# Extract and compare
+rm "./$DATA" "./ALT"
+$INTERP $SCRIPT test.zip ALT
+if [ -e "./$DATA" ]; then
+	echo "$TEST: FAIL"; R=$((R+1))
+else
+	mv ./ALT "./$DATA"
+	DST="$(sha256sum ./$DATA)"
+	if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
+	rm "./$DATA" test.zip
+fi
+
+# Xlist test
+TEST="$SCRIPT xlist"
+DATA=$(readlink -f $(which $INTERP))
+
+# Compress a binary file with deflate64
+cp $DATA .
+DATA=$(basename $DATA)
+SRC="$(sha256sum ./$DATA)"
+if [ -f test.zip ]; then rm "test.zip"; fi
+cp ./$DATA ./ALT
+zip test.zip -Z store "./$DATA" "./ALT"
+
+# Extract and compare
+rm "./$DATA" "./ALT"
+$INTERP $SCRIPT test.zip -x ALT
+if [ -e "./ALT" ]; then
+	echo "$TEST: FAIL"; R=$((R+1))
+else
+	DST="$(sha256sum ./$DATA)"
+	if [ "$SRC" = "$DST" ]; then echo "$TEST": PASS; else echo "$TEST: FAIL"; R=$((R+1)); fi
+	rm "./$DATA" test.zip
+fi
+
 exit $R
