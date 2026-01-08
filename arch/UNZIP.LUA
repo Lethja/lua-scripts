@@ -33,8 +33,6 @@ end
 ---@param x table The list of files in the zip to not extract
 function unzip(z, d, l, x)
 
-	--TODO: implement lists
-
 	-- C = Read chunk size
 	-- v = System path seperator/Version needed
 	-- f = File
@@ -53,6 +51,7 @@ function unzip(z, d, l, x)
 		-- us = Uncompressed size
 		-- nl = Length of file name
 		-- el = Extra length in the file name
+		-- fn = File name
 		-- of = Output file
 		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
@@ -62,6 +61,19 @@ function unzip(z, d, l, x)
 
 		fn, E = f:read(nl) D() -- read the filename
 		if el > 0 then f:seek("cur", el) end
+
+		if x then -- Skip file if it's on the exclude list
+			for _, i in ipairs(x) do if i == fn then goto L end end
+		end
+
+		if l then -- Skip file if it's not on the include list
+
+			-- j = file found in list
+			local j
+
+			for _, i in ipairs(l) do if i == fn then j = 1 break end end
+			if not j then goto L end
+		end
 
 		re = cs
 
@@ -124,6 +136,7 @@ function unzip(z, d, l, x)
 
 			if ec ~= cr then print("!CRC") end
 		end
+		::L:: -- Jump to the end of the loop to iterate again
 	end
 
 	f:close()
