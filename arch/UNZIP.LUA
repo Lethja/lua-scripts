@@ -63,7 +63,7 @@ function unzip(z, d, l, x)
 		if el > 0 then f:seek("cur", el) end
 
 		if x then -- Skip file if it's on the exclude list
-			for _, i in ipairs(x) do if i == fn then goto L end end
+			for _, i in ipairs(x) do if i == fn then f:seek("cur", cs) goto L end end
 		end
 
 		if l then -- Skip file if it's not on the include list
@@ -72,7 +72,7 @@ function unzip(z, d, l, x)
 			local j
 
 			for _, i in ipairs(l) do if i == fn then j = 1 break end end
-			if not j then goto L end
+			if not j then f:seek("cur", cs) goto L end
 		end
 
 		re = cs
@@ -144,7 +144,7 @@ end
 
 if arg[-1] then
 	if #arg < 1 then
-		print(arg[-1] .. " " .. (arg[0] or "?") .. "file[.zip] [list] [-x xlist] -d exdir")
+		print(arg[-1] .. " " .. (arg[0] or "?") .. "file[.zip] [list] [-x xlist] [-d exdir]")
 		os.exit(1)
 	end
 
