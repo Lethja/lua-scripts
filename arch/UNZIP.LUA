@@ -37,7 +37,8 @@ function unzip(z, d, l, x)
 	-- v = System path seperator/Version needed
 	-- f = File
 	local C, v, f = 4096, package.config:sub(1, 1)
-	f, E = io.open(z, "rb") D()
+	f = io.open(z, "rb")
+	if not f then f, E = io.open(z .. ".zip", "rb") D() end
 	if not d then d = "." end
 	if d:sub(-1) ~= v then d = d .. v end
 
@@ -144,7 +145,7 @@ end
 
 if arg[-1] then
 	if #arg < 1 then
-		print(arg[-1] .. " " .. (arg[0] or "?") .. "file[.zip] [list] [-x xlist] [-d exdir]")
+		print(arg[-1] .. " " .. (arg[0] or "?") .. " file[.zip] [list] [-x xlist] [-d exdir]")
 		os.exit(1)
 	end
 
