@@ -56,24 +56,20 @@ function unzip(z, d, l, x)
 		-- of = Output file
 		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
-		local s, fl, cm, cr, cs, us, nl, el, fn, of, re, ec = f:read(30)
+		local s, re, fl, cm, cr, cs, us, nl, el, fn, of, ec = f:read(30), "cur"
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
 		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
 		fn, E = f:read(nl) D() -- read the filename
-		if el > 0 then f:seek("cur", el) end
+		if el > 0 then f:seek(re, el) end
 
 		if x then -- Skip file if it's on the exclude list
-			for _, i in ipairs(x) do if i == fn then f:seek("cur", cs) goto L end end
+			for _, i in ipairs(x) do if i == fn then f:seek(re, cs) goto L end end
 		end
 
 		if l then -- Skip file if it's not on the include list
-
-			-- j = file found in list
-			local j
-
 			for _, i in ipairs(l) do if i == fn then j = 1 break end end
-			if not j then f:seek("cur", cs) goto L end
+			if j > 0 then f:seek(re, cs) goto L end
 		end
 
 		re = cs
@@ -130,7 +126,7 @@ function unzip(z, d, l, x)
 			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
 				inflate(R, W, cm == 9)
 			else
-				print("!Unsupported compression method " .. cm)
+				print("!CM" .. cm)
 			end
 
 			of:close()
