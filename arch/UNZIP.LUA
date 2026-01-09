@@ -63,14 +63,17 @@ function unzip(z, d, l, x)
 		fn, E = f:read(nl) D() -- read the filename
 		if el > 0 then f:seek(re, el) end
 
-		if x then -- Skip file if it's on the exclude list
-			for _, i in ipairs(x) do if i == fn then f:seek(re, cs) goto L end end
+		---Table has file name string
+		---@param t table The table to check for the string
+		---@return boolean true if name exists
+		function H(t)
+			for _, i in ipairs(t) do
+				if i == fn then return true end
+			end
 		end
 
-		if l then -- Skip file if it's not on the include list
-			for _, i in ipairs(l) do if i == fn then j = 1 break end end
-			if j > 0 then f:seek(re, cs) goto L end
-		end
+		-- Check if this file should be included or excluded from extraction
+		if (x and H(x)) or (l and not H(l)) then f:seek(re, cs) goto L end
 
 		re = cs
 
