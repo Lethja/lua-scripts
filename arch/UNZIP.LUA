@@ -2,6 +2,7 @@
 
 package.path = package.path .. ";?.LUA" --In case of a case sensitive operating system
 LIB=1
+S=os.getenv("COMSPEC") and "\\" or "/"
 
 ---Halt and catch fire if E is set
 function D() if E then error(E, 0) end end
@@ -34,17 +35,17 @@ end
 function unzip(z, d, l, x)
 
 	-- C = Read chunk size
-	-- v = System path seperator/Version needed
 	-- f = File
-	local C, v, f = 4096, package.config:sub(1, 1)
+	local C, f = 4096
 	f = io.open(z, "rb")
 	if not f then f, E = io.open(z .. ".zip", "rb") D() end
 	if not d then d = "." end
-	if d:sub(-1) ~= v then d = d .. v end
+	if d:sub(-1) ~= S then d = d .. S end
 
 	while true do
 
 		--  s = Signature
+		--  v = Version needed
 		-- fl = Flags
 		-- cm = Compression method
 		-- cr = Calculated crc32 checksum
@@ -56,7 +57,7 @@ function unzip(z, d, l, x)
 		-- of = Output file
 		-- re = Remaining bytes
 		-- ec = Expected crc32 checksum
-		local s, re, fl, cm, cr, cs, us, nl, el, fn, of, ec = f:read(30), "cur"
+		local s, re, v, fl, cm, cr, cs, us, nl, el, fn, of, ec = f:read(30), "cur"
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
 		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
@@ -82,17 +83,17 @@ function unzip(z, d, l, x)
 		---@return string The created directory.
 		local function M(p)
 
-			-- e = path seperator
 			-- c = current path
-			local e, c, t = os.getenv("COMSPEC") and "\\" or "/", "", {}
+			-- t = table of paths
+			local c, t = "", {}
 
-			p = p:gsub("[\\/]", e) -- Normalize separators to the current OS
-			for i in p:gmatch("[^" .. e .. "]+") do table.insert(t, i) end
+			p = p:gsub("[\\/]", S) -- Normalize separators to the current OS
+			for i in p:gmatch("[^" .. S .. "]+") do table.insert(t, i) end
 
 			-- i = directory
 			for i = 1, #t - 1 do
-				c = c == "" and t[i] or c .. e .. t[i]
-				os.execute('mkdir "' .. c .. '" ' .. (e == "/" and '>/dev/null 2>&1' or '>nul'))
+				c = c == "" and t[i] or c .. S .. t[i]
+				os.execute('mkdir "' .. c .. '" ' .. (S == "/" and '>/dev/null 2>&1' or '>nul'))
 			end
 		end
 
