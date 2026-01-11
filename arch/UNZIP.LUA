@@ -84,7 +84,7 @@ function unzip(z, d, l, x)
 
 			-- e = path seperator
 			-- c = current path
-			local e, c, t = package.config:sub(1, 1), "", {}
+			local e, c, t = os.getenv("COMSPEC") and "\\" or "/", "", {}
 
 			p = p:gsub("[\\/]", e) -- Normalize separators to the current OS
 			for i in p:gmatch("[^" .. e .. "]+") do table.insert(t, i) end
@@ -92,7 +92,7 @@ function unzip(z, d, l, x)
 			-- i = directory
 			for i = 1, #t - 1 do
 				c = c == "" and t[i] or c .. e .. t[i]
-				os.execute('mkdir "' .. c .. '" ' .. (e == "\\" and '>nul 2>nul' or '>/dev/null 2>&1'))
+				os.execute('mkdir "' .. c .. '" ' .. (e == "/" and '>/dev/null 2>&1' or '>nul'))
 			end
 		end
 
