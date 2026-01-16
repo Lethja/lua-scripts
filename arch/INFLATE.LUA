@@ -3,8 +3,9 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---Inflate (a.k.a decompress) a deflated file inside a zip
 ---@param r function The reader function
 ---@param w function The writer function
+---@param f file The output file handle to allow seeking the sliding window
 ---@param z boolean Is this deflate64
-function inflate(r, w, z)
+function inflate(r, w, f, z)
 
 	-- TODO: Pass the file handle to inflate to allow file seeking backwards sliding window instead of using RAM
 
@@ -166,9 +167,9 @@ function inflate(r, w, z)
 
 	while kg > 0 do
 
-		-- f = final
+		-- a = final
 		-- t = block type
-		local f, t = rb(1), rb(2)
+		local a, t = rb(1), rb(2)
 
 		if t == 0 then -- uncompressed block
 
@@ -316,7 +317,7 @@ function inflate(r, w, z)
 			error("!Unsupported", 0)
 		end
 
-		if f == 1 then kg = 0 end
+		if a == 1 then kg = 0 end
 	end
 
 	-- Flush remaining data

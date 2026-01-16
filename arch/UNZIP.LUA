@@ -111,7 +111,7 @@ function unzip(z, d, l, x)
 		fn = d .. fn -- Prepend target directory
 		M(fn) -- Create directory
 
-		of, E = io.open(fn, "wb") D()
+		of, E = io.open(fn, "w+b") D()
 		print("Extracting: " .. fn)
 
 		if of then
@@ -128,7 +128,7 @@ function unzip(z, d, l, x)
 					if c then W(c) else break end
 				end
 			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
-				inflate(R, W, cm == 9)
+				inflate(R, W, of, cm == 9)
 			else
 				print("!CM" .. cm)
 			end
