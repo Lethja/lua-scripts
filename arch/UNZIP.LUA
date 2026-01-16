@@ -128,7 +128,7 @@ function unzip(z, d, l, x)
 					if c then W(c) else break end
 				end
 			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
-				inflate(R, W, of, cm == 9)
+				inflate(R, W, of)
 			else
 				print("!CM" .. cm)
 			end

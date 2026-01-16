@@ -4,8 +4,7 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---@param r function The reader function
 ---@param w function The writer function
 ---@param f file The output file handle to allow seeking the sliding window
----@param z boolean Is this deflate64
-function inflate(r, w, f, z)
+function inflate(r, w, f)
 
 	--   Z = size of sliding window
 	--   b = buffer
@@ -59,13 +58,6 @@ function inflate(r, w, f, z)
 
 		bb, bc = (bb >> n), bc - n
 		return v
-	end
-
-	---Appends a decoded byte to the output buffer and updates the sliding window history.
-	---@param by number The byte value (0-255) to append.
-	function ab(by)
-		op = op + 1
-		w(string.char(by))
 	end
 
 	---Constructs a canonical Huffman decoding table from a list of code lengths.
@@ -161,7 +153,21 @@ function inflate(r, w, f, z)
 			l = lo + hi * 256 -- calculate length
 			lo, hi = rb(8), rb(8) -- read n-length
 			if (l ~ (lo + hi * 256)) ~= 0xFFFF then error("stored block LEN/NLEN mismatch", 0) end
-			for _ = 1, l do ab(rb(8)) end -- copy raw data
+
+			-- Copy raw data
+			while l > 0 do
+				if p > #b then if fi() == 0 then error("!EOF", 0) end end
+
+				-- k = Take amount
+				-- c = Chunk taken
+				local k, c = math.min(l, #b - p + 1)
+
+				c = b:sub(p, p + k - 1)
+				w(c)
+				op = op + k
+				p = p + k
+				l = l - k
+			end
 
 		elseif t == 1 or t == 2 then
 
@@ -227,7 +233,8 @@ function inflate(r, w, f, z)
 				local s = rh(h)
 
 				if s < 256 then
-					ab(s)
+					op = op + 1
+					w(string.char(s))
 				elseif s == 256 then
 					break
 				else
@@ -257,7 +264,7 @@ function inflate(r, w, f, z)
 						dv = db + (dx > 0 and rb(dx) or 0)
 
 						if dv <= 0 or dv > op then
-							print("!Distance", dv, Z, op) os.exit(1)
+							print("!Distance", dv, op) os.exit(1)
 						end
 
 						-- Read from output history using the file-backed sliding window
