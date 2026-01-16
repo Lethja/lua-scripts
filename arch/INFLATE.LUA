@@ -6,6 +6,8 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---@param z boolean Is this deflate64
 function inflate(r, w, z)
 
+	-- TODO: Pass the file handle to inflate to allow file seeking backwards sliding window instead of using RAM
+
 	--   Z = size of sliding window
 	--   b = buffer
 	--   p = position
@@ -68,6 +70,8 @@ function inflate(r, w, z)
 	function ab(by)
 		op = op + 1
 		oc = oc .. string.char(by)
+
+		-- TODO: Once file seeking sliding window is implemented: remove oc and o buffers and append directly to output file.
 
 		if #oc >= 4096 then
 			o[#o + 1] = oc
@@ -280,6 +284,8 @@ function inflate(r, w, z)
 						-- Read from output history
 						for _ = 1, l do
 
+							-- TODO: Replace this loop with file seeking sliding window logic.
+
 							-- c = character
 							local c
 
@@ -314,6 +320,7 @@ function inflate(r, w, z)
 	end
 
 	-- Flush remaining data
+	-- TODO: Once file seeking sliding window is implemented, remove flushing logic as it's redundant
 	for i = 1, #o do w(o[i]) end
 	if #oc > 0 then w(oc) end
 end
