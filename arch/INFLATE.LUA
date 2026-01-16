@@ -7,8 +7,6 @@ if not LIB then print("Please run unzip instead") os.exit(1) end
 ---@param z boolean Is this deflate64
 function inflate(r, w, f, z)
 
-	-- TODO: Pass the file handle to inflate to allow file seeking backwards sliding window instead of using RAM
-
 	--   Z = size of sliding window
 	--   b = buffer
 	--   p = position
@@ -16,13 +14,10 @@ function inflate(r, w, f, z)
 	--  bc = bit count
 	--  op = output position
 	--  kg = keep going (in a loop)
-	--   o = list of 4096-byte strings that make up the output and sliding window
-	--  oc = current string being built
-	--  os = total size of all strings in 'o'
 	-- lex = length base & extra bits (pairs of bytes)
 	-- dix = distance extra bits (1 byte per entry)
 	-- dib = distance base (packed 32-bit LE)
-	local Z, b, p, bb, bc, op, kg, o, oc, os, lex, dix, dib = z and 65536 or 32768, "", 1, 0, 0, 0, 1, {}, "", 0,
+	local Z, b, p, bb, bc, op, kg, lex, dix, dib = z and 65536 or 32768, "", 1, 0, 0, 0, 1,
 	-- lex, dix, dib packed strings
 
 	"\3\0\4\0\5\0\6\0\7\0\8\0\9\0\10\0\11\1\13\1\15\1\17\1\19\2\23\2\27\2\31\2\35\3\43\3\51\3\59\3\67\4\83\4\99\4\115\4\131\5\163\5\195\5\227\5\2\0",
@@ -70,24 +65,7 @@ function inflate(r, w, f, z)
 	---@param by number The byte value (0-255) to append.
 	function ab(by)
 		op = op + 1
-		oc = oc .. string.char(by)
-
-		-- TODO: Once file seeking sliding window is implemented: remove oc and o buffers and append directly to output file.
-
-		if #oc >= 4096 then
-			o[#o + 1] = oc
-			os = os + #oc
-			oc = ""
-
-			-- If window exceeds limit, write and discard the oldest chunk
-			if os > Z then
-
-				-- ot = old table of 4096 bytes that have shifted out of the sliding window
-				local ot = table.remove(o, 1)
-				os = os - #ot
-				w(ot)
-			end
-		end
+		w(string.char(by))
 	end
 
 	---Constructs a canonical Huffman decoding table from a list of code lengths.
@@ -282,34 +260,16 @@ function inflate(r, w, f, z)
 							print("!Distance", dv, Z, op) os.exit(1)
 						end
 
-						-- Read from output history
-						for _ = 1, l do
+						-- Read from output history using the file-backed sliding window
+						f:seek("end", -dv)
 
-							-- TODO: Replace this loop with file seeking sliding window logic.
+						-- n = pattern
+						local n = f:read(math.min(dv, l))
 
-							-- c = character
-							local c
-
-							if dv <= #oc then -- Target is in the currently building chunk
-								c = oc:sub(#oc - dv + 1, #oc - dv + 1)
-							else -- Target is in one of the completed chunks
-
-								-- of = offset
-								-- co = coff
-								local of, co = os - (dv - #oc), 0
-								for i = 1, #o do
-									if of < co + #o[i] then
-
-										-- n = position
-										local n = of - co + 1
-										c = o[i]:sub(n, n)
-										break
-									end
-									co = co + #o[i]
-								end
-							end
-							ab(c:byte())
-						end
+						n = n:rep(l // dv) .. n:sub(1, l % dv)
+						f:seek("end")
+						w(n)
+						op = op + l
 					end
 				end
 			end
@@ -319,9 +279,4 @@ function inflate(r, w, f, z)
 
 		if a == 1 then kg = 0 end
 	end
-
-	-- Flush remaining data
-	-- TODO: Once file seeking sliding window is implemented, remove flushing logic as it's redundant
-	for i = 1, #o do w(o[i]) end
-	if #oc > 0 then w(oc) end
 end
