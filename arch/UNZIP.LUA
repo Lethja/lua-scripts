@@ -61,6 +61,7 @@ function unzip(z, d, l, x)
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
 		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
 
+		--TODO: Fix filename length on 16-bit builds
 		fn, E = f:read(nl) D() -- read the filename
 		if el > 0 then f:seek(re, el) end
 
@@ -127,6 +128,7 @@ function unzip(z, d, l, x)
 					local c = R()
 					if c then W(c) else break end
 				end
+			--TODO: Fix pcall hang on 16-bit builds
 			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
 				inflate(R, W, of)
 			else
