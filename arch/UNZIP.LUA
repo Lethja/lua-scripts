@@ -59,9 +59,7 @@ function unzip(z, d, l, x)
 		-- ec = Expected crc32 checksum
 		local s, re, v, fl, cm, cr, cs, us, nl, el, fn, of, ec = f:read(30), "cur"
 		if not s or #s < 30 or not s:find("^PK\3\4") then break end
-		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHIIIHH", s, 5)
-
-		--TODO: Fix filename length on 16-bit builds
+		v, fl, cm, _, _, ec, cs, us, nl, el = string.unpack("<HHHHHI4I4I4HH", s, 5)
 		fn, E = f:read(nl) D() -- read the filename
 		if el > 0 then f:seek(re, el) end
 
