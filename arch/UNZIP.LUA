@@ -106,6 +106,22 @@ function unzip(z, d, l, x)
 			return c
 		end
 
+		---Load a Lua Module if it exists
+		---@param m string The module name to look for
+		---@return boolean true if the module file is found and loaded, nil otherwise
+		function LLM(m)
+
+			-- p = Path
+			for p in package.path:gmatch("[^;]+") do
+
+				-- n = File name
+				-- o = Opened file
+				local n, o = p:gsub("%?", m):gsub("[\\/]", S)
+				o = io.open(n, "r")
+				if o then o:close() return require(m) end
+			end
+		end
+
 		-- Setup output file
 		fn = d .. fn -- Prepend target directory
 		M(fn) -- Create directory
@@ -126,8 +142,7 @@ function unzip(z, d, l, x)
 					local c = R()
 					if c then W(c) else break end
 				end
-			--TODO: Fix pcall hang on 16-bit builds
-			elseif (cm == 8 or cm == 9) and pcall(require, "INFLATE") then -- deflated file
+			elseif (cm == 8 or cm == 9) and LLM("INFLATE") then -- deflated file
 				inflate(R, W, of)
 			else
 				print("!CM" .. cm)
