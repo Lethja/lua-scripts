@@ -12,10 +12,11 @@ function inflate(r, w, f)
 	--  bc = Bit count
 	--  op = Output position
 	--  kg = Keep going (in a loop)
+	--  le = Decoded bit-lengths for literal/distance tables
 	-- lex = Length base & extra bits (pairs of bytes)
 	-- dix = Distance extra bits (1 byte per entry)
 	-- dib = Distance base (packed 32-bit LE)
-	local b, p, bb, bc, op, kg, le, ll, dl, lex, dix, dib = "", 1, 0, 0, 0, 1, {}, {}, {},
+	local b, p, bb, bc, op, kg, le, lex, dix, dib = "", 1, 0, 0, 0, 1, {},
 
 	-- lex, dix & dib are packed string constants
 	"\3\0\4\0\5\0\6\0\7\0\8\0\9\0\10\0\11\1\13\1\15\1\17\1\19\2\23\2\27\2\31\2\35\3\43\3\51\3\59\3\67\4\83\4\99\4\115\4\131\5\163\5\195\5\227\5\2\0",
@@ -64,6 +65,8 @@ function inflate(r, w, f)
 	---@param bi number The number of bits to process.
 	---@return number The bit-reversed value.
 	function rv(x, bi)
+
+		-- y = The reverse of x
 		local y = 0
 
 		for _ = 1, bi do
@@ -77,14 +80,23 @@ function inflate(r, w, f)
 	---Constructs a canonical Huffman decoding table from a list of code lengths.
 	---@param ls table An array where the index is the symbol and the value is its bit length.
 	---@param nc number The number of codes to process from the table.
-	---@param off number The offset in the table to start from.
+	---@param of number The offset in the table to start from.
 	---@return table A Huffman object containing the lookup table (`tab`) and the maximum code length (`max`).
-	function mh(ls, nc, off)
-		off = off or 0
+	function mh(ls, nc, of)
+
+		-- m = Maximum length
+		-- c = Counts
+		-- d = Code
+		-- n = Next code
+		-- t = Tab
 		local m, c, d, n, t = 0, {}, 0, {}, {}
 
+		of = of or 0
 		for i = 1, nc do
-			local l = ls[i + off]
+
+			-- l = Bit Length
+			local l = ls[i + of]
+
 			if l and l > 0 then
 				c[l] = (c[l] or 0) + 1
 				if l > m then m = l end
@@ -94,7 +106,10 @@ function inflate(r, w, f)
 		for i = 1, m do d = (d + (c[i - 1] or 0)) << 1 n[i] = d end
 
 		for s = 1, nc do
-			local l = ls[s + off]
+
+			-- l = Length
+			local l = ls[s + of]
+
 			if l and l > 0 then
 				t[rv(n[l], l)] = { sym = s - 1, len = l }
 				n[l] = n[l] + 1
@@ -178,26 +193,37 @@ function inflate(r, w, f)
 				d = mh(le, 32, 288)
 			else
 				-- Dynamic Huffman
-				local hl, hd, hc, od, cl = rb(5) + 257, rb(5) + 1, rb(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}
+
+				-- hl = Literal/length code count (HLIT)
+				-- hd = Distance code count (HDIST)
+				-- hc = Meta-code length count (HCLEN)
+				-- od = Permutation order for code lengths
+				-- cl = Code lengths for the meta-table
+				-- ch = Huffman table for decoding bit-lengths
+				local hl, hd, hc, od, cl, li, ch = rb(5) + 257, rb(5) + 1, rb(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}, 1
 
 				for i = 1, 19 do cl[i] = 0 end
 				for i = 1, hc do cl[od:byte(i) + 1] = rb(3) end
-				local ch = mh(cl, 19)
+				ch = mh(cl, 19)
 
-				local lei = 1
-				while lei <= hl + hd do
+				while li <= hl + hd do
+
+					-- s = Symbol
+					-- x = Repeat count
+					-- l = Code length
 					local s, x, l = rh(ch)
+
 					if s <= 15 then
-						le[lei] = s; lei = lei + 1
+						le[li] = s; li = li + 1
 					elseif s == 16 then
-						x, l = rb(2) + 3, le[lei - 1]
-						for _ = 1, x do le[lei] = l; lei = lei + 1 end
+						x, l = rb(2) + 3, le[li - 1]
+						for _ = 1, x do le[li] = l; li = li + 1 end
 					elseif s == 17 then
 						x = rb(3) + 3
-						for _ = 1, x do le[lei] = 0; lei = lei + 1 end
+						for _ = 1, x do le[li] = 0; li = li + 1 end
 					elseif s == 18 then
 						x = rb(7) + 11
-						for _ = 1, x do le[lei] = 0; lei = lei + 1 end
+						for _ = 1, x do le[li] = 0; li = li + 1 end
 					end
 				end
 				h = mh(le, hl) d = mh(le, hd, hl)
