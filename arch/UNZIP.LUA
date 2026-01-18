@@ -128,6 +128,7 @@ function unzip(z, d, l, x)
 
 		of, E = io.open(fn, "w+b") D()
 		print("Extracting: " .. fn)
+		fn = nil
 
 		if of then
 			---Write decompressed data and update CRC

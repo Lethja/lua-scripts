@@ -59,6 +59,21 @@ function inflate(r, w, f)
 		return v
 	end
 
+	---Reverses the order of the lower `bi` bits in an integer.
+	---@param x number The integer value containing the bits to reverse.
+	---@param bi number The number of bits to process.
+	---@return number The bit-reversed value.
+	function rv(x, bi)
+		local y = 0
+
+		for _ = 1, bi do
+			y = (y << 1) | (x & 1)
+			x = x >> 1
+		end
+
+		return y
+	end
+
 	---Constructs a canonical Huffman decoding table from a list of code lengths.
 	---@param ls table An array where the index is the symbol and the value is its bit length.
 	---@return table A Huffman object containing the lookup table (`tab`) and the maximum code length (`max`).
@@ -84,21 +99,6 @@ function inflate(r, w, f)
 		for i = 1, m do
 			d = (d + (c[i - 1] or 0)) << 1
 			n[i] = d
-		end
-
-		---Reverses the order of the lower `bi` bits in an integer.
-		---@param x number The integer value containing the bits to reverse.
-		---@param bi number The number of bits to process.
-		---@return number The bit-reversed value.
-		function rv(x, bi)
-			local y = 0
-
-			for _ = 1, bi do
-				y = (y << 1) | (x & 1)
-				x = x >> 1
-			end
-
-			return y
 		end
 
 		-- s = Sym
@@ -151,7 +151,7 @@ function inflate(r, w, f)
 			lo, hi = rb(8), rb(8) -- Read length
 			l = lo + hi * 256 -- Calculate length
 			lo, hi = rb(8), rb(8) -- Read n-length
-			if (l ~ (lo + hi * 256)) ~= 0xFFFF then error("stored block LEN/NLEN mismatch", 0) end
+			if (l ~ (lo + hi * 256)) ~= 0xFFFF then error("!LEN", 0) end
 
 			-- Copy raw data
 			while l > 0 do
@@ -234,6 +234,7 @@ function inflate(r, w, f)
 				if s < 256 then
 					op = op + 1
 					w(string.char(s))
+					f:flush()
 				elseif s == 256 then
 					break
 				else
@@ -275,14 +276,17 @@ function inflate(r, w, f)
 						n = n:rep(l // dv) .. n:sub(1, l % dv)
 						f:seek("end")
 						w(n)
+						f:flush()
 						op = op + l
 					end
 				end
+				collectgarbage("step")
 			end
 		else
 			error("!Unsupported", 0)
 		end
 
 		if a == 1 then kg = 0 end
+		collectgarbage("step")
 	end
 end
