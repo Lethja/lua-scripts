@@ -15,7 +15,7 @@ function inflate(r, w, f)
 	-- lex = Length base & extra bits (pairs of bytes)
 	-- dix = Distance extra bits (1 byte per entry)
 	-- dib = Distance base (packed 32-bit LE)
-	local b, p, bb, bc, op, kg, lex, dix, dib = "", 1, 0, 0, 0, 1,
+	local b, p, bb, bc, op, kg, le, ll, dl, lex, dix, dib = "", 1, 0, 0, 0, 1, {}, {}, {},
 
 	-- lex, dix & dib are packed string constants
 	"\3\0\4\0\5\0\6\0\7\0\8\0\9\0\10\0\11\1\13\1\15\1\17\1\19\2\23\2\27\2\31\2\35\3\43\3\51\3\59\3\67\4\83\4\99\4\115\4\131\5\163\5\195\5\227\5\2\0",
@@ -76,35 +76,26 @@ function inflate(r, w, f)
 
 	---Constructs a canonical Huffman decoding table from a list of code lengths.
 	---@param ls table An array where the index is the symbol and the value is its bit length.
+	---@param nc number The number of codes to process from the table.
+	---@param off number The offset in the table to start from.
 	---@return table A Huffman object containing the lookup table (`tab`) and the maximum code length (`max`).
-	function mh(ls)
-
-		-- m = Maximum length
-		-- c = Counts
-		-- d = Code
-		-- n = Next code
-		-- t = Tab
+	function mh(ls, nc, off)
+		off = off or 0
 		local m, c, d, n, t = 0, {}, 0, {}, {}
 
-		-- l = Length
-		for _, l in ipairs(ls) do
-			if l > 0 then
+		for i = 1, nc do
+			local l = ls[i + off]
+			if l and l > 0 then
 				c[l] = (c[l] or 0) + 1
-				if l > m then m = l
-				end
+				if l > m then m = l end
 			end
 		end
 
-		-- i = Bits
-		for i = 1, m do
-			d = (d + (c[i - 1] or 0)) << 1
-			n[i] = d
-		end
+		for i = 1, m do d = (d + (c[i - 1] or 0)) << 1 n[i] = d end
 
-		-- s = Sym
-		-- l = Len
-		for s, l in ipairs(ls) do
-			if l > 0 then
+		for s = 1, nc do
+			local l = ls[s + off]
+			if l and l > 0 then
 				t[rv(n[l], l)] = { sym = s - 1, len = l }
 				n[l] = n[l] + 1
 			end
@@ -174,56 +165,42 @@ function inflate(r, w, f)
 			-- dl = Distance bit-lengths
 			--  h = Literal/length Huffman decoding table
 			--  d = Distance Huffman decoding table
-			local ll, dl, h, d = {}, {}
+			local h, d = {}, {}
 
 			if t == 1 then
-				-- Fixed Huffman
-				for _ = 0, 143 do ll[#ll + 1] = 8 end
-				for _ = 144, 255 do ll[#ll + 1] = 9 end
-				for _ = 256, 279 do ll[#ll + 1] = 7 end
-				for _ = 280, 287 do ll[#ll + 1] = 8 end
-				h = mh(ll)
-				for _ = 0, 31 do dl[#dl + 1] = 5 end
-				d = mh(dl)
+				-- Fixed Huffman: Use le as a scratchpad
+				for i = 1, 144 do le[i] = 8 end
+				for i = 145, 256 do le[i] = 9 end
+				for i = 257, 280 do le[i] = 7 end
+				for i = 281, 288 do le[i] = 8 end
+				h = mh(le, 288)
+				for i = 289, 289 + 31 do le[i] = 5 end
+				d = mh(le, 32, 288)
 			else
 				-- Dynamic Huffman
-
-				-- hl = Literal/length code count (HLIT)
-				-- hd = Distance code count (HDIST)
-				-- hc = Meta-code length count (HCLEN)
-				-- od = Permutation order for code lengths
-				-- cl = Code lengths for the meta-table
-				-- le = Decoded bit-lengths for literal/distance tables
-				-- ch = Huffman table for decoding bit-lengths
-				local hl, hd, hc, od, cl, le, ch = rb(5) + 257, rb(5) + 1, rb(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}, {}
+				local hl, hd, hc, od, cl = rb(5) + 257, rb(5) + 1, rb(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}
 
 				for i = 1, 19 do cl[i] = 0 end
 				for i = 1, hc do cl[od:byte(i) + 1] = rb(3) end
-				ch = mh(cl)
+				local ch = mh(cl, 19)
 
-				while #le < hl + hd do
-
-					-- s = Symbol
-					-- x = Repeat count
-					-- l = Code length
+				local lei = 1
+				while lei <= hl + hd do
 					local s, x, l = rh(ch)
-
 					if s <= 15 then
-						le[#le + 1] = s
+						le[lei] = s; lei = lei + 1
 					elseif s == 16 then
-						x, l = rb(2) + 3, le[#le]
-						for _ = 1, x do le[#le + 1] = l end
+						x, l = rb(2) + 3, le[lei - 1]
+						for _ = 1, x do le[lei] = l; lei = lei + 1 end
 					elseif s == 17 then
 						x = rb(3) + 3
-						for _ = 1, x do le[#le + 1] = 0 end
+						for _ = 1, x do le[lei] = 0; lei = lei + 1 end
 					elseif s == 18 then
 						x = rb(7) + 11
-						for _ = 1, x do le[#le + 1] = 0 end
+						for _ = 1, x do le[lei] = 0; lei = lei + 1 end
 					end
 				end
-				for i = 1, hl do ll[i] = le[i] end
-				for i = hl + 1, hl + hd do dl[i - hl] = le[i] end
-				h = mh(ll) d = mh(dl)
+				h = mh(le, hl) d = mh(le, hd, hl)
 			end
 
 			while true do
@@ -268,7 +245,7 @@ function inflate(r, w, f)
 						end
 
 						-- Read from output history using the file-backed sliding window
-						f:seek("end", -dv)
+						f:seek("set", op - dv)
 
 						-- n = Pattern
 						local n = f:read(math.min(dv, l))
