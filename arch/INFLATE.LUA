@@ -13,12 +13,14 @@ function inflate(r, w, f)
 	--  op = Output position
 	--  kg = Keep going (in a loop)
 	--  le = Decoded bit-lengths for literal/distance tables
+	--  od = Permutation order for code lengths
 	-- lex = Length base & extra bits (pairs of bytes)
 	-- dix = Distance extra bits (1 byte per entry)
 	-- dib = Distance base (packed 32-bit LE)
-	local b, p, bb, bc, op, kg, le, lex, dix, dib = "", 1, 0, 0, 0, 1, {},
+	local b, p, bb, bc, op, kg, le, od, lex, dix, dib = "", 1, 0, 0, 0, 1, {},
 
-	-- lex, dix & dib are packed string constants
+	-- od, lex, dix & dib are packed string constants
+	"\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15",
 	"\3\0\4\0\5\0\6\0\7\0\8\0\9\0\10\0\11\1\13\1\15\1\17\1\19\2\23\2\27\2\31\2\35\3\43\3\51\3\59\3\67\4\83\4\99\4\115\4\131\5\163\5\195\5\227\5\2\0",
 	"\0\0\0\0\1\1\2\2\3\3\4\4\5\5\6\6\7\7\8\8\9\9\10\10\11\11\12\12\13\13\14\14\15\15\16\16\17\17\18\18\19\19\20\20\21\21\22\22\23\23\24\24\25\25\26\26\27\27\28\28\29\29\30\30",
 	"\1\0\0\0\2\0\0\0\3\0\0\0\4\0\0\0\5\0\0\0\7\0\0\0\9\0\0\0\13\0\0\0\17\0\0\0\25\0\0\0\33\0\0\0\49\0\0\0\65\0\0\0\97\0\0\0\129\0\0\0\193\0\0\0\1\1\0\0\129\1\0\0\1\2\0\0\1\3\0\0\1\4\0\0\1\6\0\0\1\8\0\0\1\12\0\0\1\16\0\0\1\24\0\0\1\32\0\0\1\48\0\0\1\64\0\0\1\96\0\0\1\128\0\0\1\192\0\0\1\0\1\0\1\128\1\0\1\0\2\0\1\128\2\0\1\0\4\0\1\128\4\0\1\0\8\0\1\128\8\0\1\0\16\0\1\128\16\0\1\0\32\0\1\128\32\0\1\0\64\0\1\128\64\0\1\0\128\0\1\128\128\0\1\0\0\1\1\128\0\1\1\0\0\2\1\128\0\2\1\0\0\4\1\128\0\4\1\0\0\8\1\128\0\8\1\0\0\16\1\128\0\16\1\0\0\32\1\128\0\32\1\0\0\64\1\128\0\64\1\0\0\128\1\128\0\128\1\0\0\0\192"
@@ -197,10 +199,9 @@ function inflate(r, w, f)
 				-- hl = Literal/length code count (HLIT)
 				-- hd = Distance code count (HDIST)
 				-- hc = Meta-code length count (HCLEN)
-				-- od = Permutation order for code lengths
 				-- cl = Code lengths for the meta-table
 				-- ch = Huffman table for decoding bit-lengths
-				local hl, hd, hc, od, cl, li, ch = rb(5) + 257, rb(5) + 1, rb(4) + 4, "\16\17\18\0\8\7\9\6\10\5\11\4\12\3\13\2\14\1\15", {}, 1
+				local hl, hd, hc, cl, li, ch = rb(5) + 257, rb(5) + 1, rb(4) + 4, {}, 1
 
 				for i = 1, 19 do cl[i] = 0 end
 				for i = 1, hc do cl[od:byte(i) + 1] = rb(3) end
